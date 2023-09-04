@@ -1,5 +1,7 @@
+use nalgebra::Vector3;
+
 pub struct Nn {
-    pub syn: Vec<f32>,
+    pub syn: Vector3<f32>,
     pub ax: f32,
     pub tau: f32,
     pub resist: f32,
@@ -8,8 +10,8 @@ pub struct Nn {
 
 impl Nn {
 
-    pub fn fwd(&self) -> f32 {
-        1.
+    pub fn fwd(&self, input: Vector3<f32>) -> f32 {
+        input.dot(&self.syn)
     }
 
     pub fn bkwd(&self) {
