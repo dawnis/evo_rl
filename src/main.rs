@@ -4,17 +4,20 @@ use evo_rl::Nn;
 
 fn main() {
 
-    let test_nn = Nn {
-        syn: Vector3::new(1., 2., 3.),
+    let mut test_nn = Nn {
+        syn: Vector3::new(0.8, 0.8, 0.8),
         ax: 0.,
-        resist: 10.,
-        tau: 5.,
+        tau: 0.2,
+        refractory: 0.,
+        thresh: 5.,
         connect: String::from("friends")
     };
 
-    test_nn.bkwd();
 
-    let test_output = test_nn.fwd(Vector3::new(3., 2., 1.));
+    for _iter in 0..100 {
+        let test_output = test_nn.fwd_integrate(Vector3::new(1., 1., 1.), 1.);
+        println!("Our output is {}", test_output);
+    }
 
-    println!("Our output is {}", test_output);
+
 }

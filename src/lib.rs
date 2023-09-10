@@ -27,16 +27,23 @@ impl Nn {
         println!("I'm learning mom!")
     }
 
+    fn fire(&mut self) -> f32 {
+        self.learn();
+        self.reset();
+        let neuron_out = relu(&self.ax);
+        self.ax = 0.;
+        neuron_out
+    }
+
     fn reset(&mut self) {
         self.refractory = 2.
     }
 
-    pub fn fire(&mut self, input: Vector3<f32>, time_delta: f32) -> f32 {
+    pub fn fwd_integrate(&mut self, input: Vector3<f32>, time_delta: f32) -> f32 {
         self.fwd(input);
         self.refractory = self.refractory - time_delta;
-        if self.ax > self.thresh & self.refractory <= 0 {
-            self.learn();
-            relu(&self.ax)
+        if (self.ax > self.thresh) & (self.refractory <= 0.) {
+            self.fire()
         } else { 0. }
 
     }
