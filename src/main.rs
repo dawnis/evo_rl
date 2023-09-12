@@ -1,3 +1,5 @@
+use rand::prelude::*;
+use rand::distributions::{Distribution, Uniform};
 use nalgebra::Vector3;
 
 use evo_rl::Nn;
@@ -13,10 +15,14 @@ fn main() {
         connect: String::from("friends")
     };
 
+    let mut rng = rand::thread_rng();
+    let input_range = Uniform::new(0., 1.);
 
-    for _iter in 0..100 {
-        let test_output = test_nn.fwd_integrate(Vector3::new(1., 1., 1.), 1.);
-        println!("Our output is {}", test_output);
+    for iter in 0..100 {
+        let input_vec: Vec<f32> = (0..3).map( |_| input_range.sample(&mut rng)).collect();
+        let input = Vector3::from_vec(input_vec);
+        test_nn.fwd_integrate(input, 1.);
+        println!("Iteration: {}, Voltage: {}", iter, test_nn.ax);
     }
 
 

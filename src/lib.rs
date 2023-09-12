@@ -24,7 +24,7 @@ impl Nn {
     }
 
     fn learn(&self) {
-        println!("I'm learning mom!")
+        println!("Firing! {}", self.ax)
     }
 
     fn fire(&mut self) -> f32 {
