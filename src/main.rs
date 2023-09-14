@@ -2,7 +2,7 @@ use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
 use nalgebra::Vector3;
 
-use evo_rl::Nn;
+use evo_rl::neuron::Nn;
 
 fn main() {
 
