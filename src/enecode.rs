@@ -9,28 +9,17 @@ use crate::neuron::Nn;
 //  3. meta-learning such as synaptic plasticity rules
 //
 
-pub trait Gene {
-}
-
 pub struct EneCode {
-    pub genome: Vec<Chromosome>
+    pub topology: Vec<ToplogyGene>
 }
-
-pub struct Chromosome {
-    pub encoding: Vec<Box<dyn Gene>>
-}
-
 
 pub struct ToplogyGene {
     pub identity: Nn,
+    pub pin: usize, //stolen from python-neat for outside connections
     pub outputs: Vec<Nn>,
     pub active: bool,
     pub innovation_number: usize,
 }
-
-impl Gene for ToplogyGene {
-}
-
 
 pub struct NeuronalPropertiesGene {
     pub identity: Nn,
@@ -40,11 +29,7 @@ pub struct NeuronalPropertiesGene {
     pub alpha: f32
 }
 
-impl Gene for NeuronalPropertiesGene {
-}
-
-
-pub struct MetalearningGene {
+pub struct MetaLearningGene {
     pub identity: Nn,
     pub innovation_number: usize,
     pub learning_rate: f32,

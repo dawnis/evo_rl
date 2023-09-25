@@ -10,3 +10,4 @@ rand = "0.8.5"
 nalgebra = "0.32.3"
 polars = { version = "0.32.1", features = ["lazy"] }
 ndarray = { version = "0.15.6", features = ["serde"] }
+petgraph = "0.6.4"

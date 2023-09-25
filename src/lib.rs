@@ -1,5 +1,6 @@
 pub mod neuron;
 pub mod enecode;
+pub mod graph;
 
 use ndarray::prelude::*;
 use polars::prelude::*;
