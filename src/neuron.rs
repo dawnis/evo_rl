@@ -1,3 +1,8 @@
+// basic neuron in evorl
+// learning based on combination of backprop and hebbian principles
+// TODO:
+// 1. smooth parameters for non-linearities
+// 2. evolvable synaptic learning
 use nalgebra::Vector3;
 
 pub fn relu(z: &f32) -> f32 {
