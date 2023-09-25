@@ -22,7 +22,7 @@ impl Nn {
     }
 
 
-    fn fwd(&mut self, input: Vector3<f32>) {
+    pub fn fwd(&mut self, input: Vector3<f32>) {
         let impulse: f32 = input.dot(&self.syn);
         self.ax = self.ax * (-self.tau).exp() + impulse;
         self.learn();
@@ -33,7 +33,7 @@ impl Nn {
     fn learn(&mut self) {
         //increase synaptic weights in proportion to lerning rate, with ceil
         if self.ax > self.learning_threshold {
-            self.syn = self.syn.map(|x| x + x * self.ax * self.learning_rate)
+            self.syn = self.syn.map(|x| x + x * self.learning_rate - self.ax * self.learning_rate)
         }
     }
 
