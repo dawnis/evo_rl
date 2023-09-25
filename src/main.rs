@@ -5,6 +5,7 @@ use nalgebra::Vector3;
 use evo_rl::neuron::Nn;
 
 fn main() {
+    //Immediate Goal: Evolve a neural network to solve XOR? 
 
     let mut test_nn = Nn {
         syn: Vector3::new(0.1, 0.2, 0.4),
