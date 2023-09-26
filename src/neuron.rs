@@ -3,10 +3,15 @@
 // TODO:
 // 1. smooth parameters for non-linearities
 // 2. evolvable synaptic learning
-use nalgebra::Vector3;
+extern crate nalgebra as na;
 
-pub struct Nn {
-    pub syn: Vector3<f32>,
+use crate::enecode::NeuronalEneCode;
+use na::DVector;
+
+
+pub struct Nn<'a> {
+    pub synaptic_weights: DVector<f32>,
+    pub inputs: Vec<&'a str>,
     pub ax: f32,
     pub tau: f32,
     pub learning_threshold: f32,
@@ -14,7 +19,21 @@ pub struct Nn {
     pub alpha: f32,
 }
 
-impl Nn {
+impl<'a> From<NeuronalEneCode<'a>> for Nn<'a> {
+    fn from(ene: NeuronalEneCode) -> Self {
+        Nn {
+            inputs: ene.topology.inputs,
+            synaptic_weights: DVector::from_vec(ene.topology.genetic_weights), 
+            ax: 0., 
+            tau: ene.properties.tau,
+            learning_rate: ene.meta.learning_rate,
+            learning_threshold: ene.meta.learning_threshold,
+            alpha: ene.properties.alpha,
+        }
+    }
+}
+
+impl<'a> Nn<'a> {
 
     pub fn nonlinearity(&self, z: &f32) -> f32 {
         //using hyperboilc tangent function with parameter alpha
@@ -22,8 +41,8 @@ impl Nn {
     }
 
 
-    pub fn fwd(&mut self, input: Vector3<f32>) {
-        let impulse: f32 = input.dot(&self.syn);
+    pub fn fwd(&mut self, input_values: DVector<f32>) {
+        let impulse: f32 = input_values.dot(&self.synaptic_weights);
         self.ax = self.ax * (-self.tau).exp() + impulse;
         self.learn();
         self.nonlinearity(&self.ax);
@@ -33,10 +52,9 @@ impl Nn {
     fn learn(&mut self) {
         //increase synaptic weights in proportion to lerning rate, with ceil
         if self.ax > self.learning_threshold {
-            self.syn = self.syn.map(|x| x + x * self.learning_rate - self.ax * self.learning_rate)
+            self.synaptic_weights = self.synaptic_weights.map(|x| x + x * self.learning_rate - self.ax * self.learning_rate)
         }
     }
 
-
-
 }
+
