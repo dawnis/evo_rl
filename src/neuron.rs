@@ -9,6 +9,7 @@ use crate::enecode::NeuronalEneCode;
 use na::DVector;
 
 
+#[derive(Debug, Clone)]
 pub struct Nn<'a> {
     pub synaptic_weights: DVector<f32>,
     pub inputs: Vec<&'a str>,
@@ -20,10 +21,10 @@ pub struct Nn<'a> {
 }
 
 impl<'a> From<NeuronalEneCode<'a>> for Nn<'a> {
-    fn from(ene: NeuronalEneCode) -> Self {
+    fn from(ene: NeuronalEneCode<'a>) -> Self {
         Nn {
-            inputs: ene.topology.inputs,
-            synaptic_weights: DVector::from_vec(ene.topology.genetic_weights), 
+            inputs: ene.topology.inputs.clone(),
+            synaptic_weights: DVector::from_vec(ene.topology.genetic_weights.clone()), 
             ax: 0., 
             tau: ene.properties.tau,
             learning_rate: ene.meta.learning_rate,

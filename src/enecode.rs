@@ -10,6 +10,7 @@ use crate::neuron::Nn;
 //
 
 //Overall Genome
+#[derive(Debug, Clone)]
 pub struct EneCode<'a> {
     pub neuron_id: Vec<&'a str>, //equivalent to innovation_number in TopologyGene
     pub topology: Vec<ToplogyGene<'a>>,
@@ -18,7 +19,7 @@ pub struct EneCode<'a> {
 }
 
 impl<'a> EneCode<'a> {
-    pub fn topology_gene(self, neuron_id: &'a str) -> &ToplogyGene {
+    pub fn topology_gene(&self, neuron_id: &'a str) -> &ToplogyGene {
         let gene = self.topology.iter()
             .find(|&g| g.innovation_number == neuron_id)
             .expect("Innovation Number Not Found in Topology Genome!");
@@ -30,11 +31,23 @@ impl<'a> EneCode<'a> {
 //Genetic Makeup of an Individual Neuron
 pub struct NeuronalEneCode<'a> {
     pub neuron_id: &'a str,
-    pub topology: ToplogyGene<'a>,
-    pub properties: NeuronalPropertiesGene<'a>,
-    pub meta: MetaLearningGene<'a>,
+    pub topology: &'a ToplogyGene<'a>,
+    pub properties: &'a NeuronalPropertiesGene<'a>,
+    pub meta: &'a MetaLearningGene<'a>,
 }
 
+impl<'a> NeuronalEneCode<'a> {
+    pub fn new_from_enecode(neuron_id: &'a str, genome: &'a EneCode) -> Self {
+        NeuronalEneCode {
+            neuron_id,
+            topology: genome.topology_gene(neuron_id),
+            properties: &genome.neuronal_props,
+            meta: &genome.meta_learning, 
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ToplogyGene<'a> {
     pub innovation_number: &'a str,
     pub pin: usize, //stolen from python-neat for outside connections
@@ -44,6 +57,7 @@ pub struct ToplogyGene<'a> {
     pub active: bool,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct NeuronalPropertiesGene<'a> {
     pub innovation_number: &'a str,
     pub tau: f32,
@@ -51,6 +65,7 @@ pub struct NeuronalPropertiesGene<'a> {
     pub alpha: f32
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct MetaLearningGene<'a> {
     pub innovation_number: &'a str,
     pub learning_rate: f32,

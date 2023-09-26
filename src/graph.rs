@@ -1,28 +1,42 @@
 use crate::neuron::Nn;
-use crate::enecode::EneCode;
+use crate::enecode::{EneCode, NeuronalEneCode};
 use std::collections::HashMap;
-use petgraph::graph::DiGraph;
+use petgraph::graph::{DiGraph, NodeIndex};
 
+#[derive(Debug, Clone)]
 struct FeedForwardNeuralNetwork<'a> {
-    genome: EneCode<'a>  
+    genome: EneCode<'a>,
+    graph: DiGraph<Nn<'a>, ()>,
+    node_identity_map: HashMap<&'a str, NodeIndex>,
 }
 
-impl FeedForwardNeuralNetwork<'_> {
+impl<'a> FeedForwardNeuralNetwork<'a> {
 
-    fn get_network(self) -> DiGraph<Nn, f32> {
-        let mut graph = DiGraph::new();
-        let mut node_identity_map = HashMap::new();
+    fn new<'b: 'a>(genome: &'b EneCode) -> Self {
+        FeedForwardNeuralNetwork {
+            genome: genome.clone(),
+            graph: DiGraph::new(),
+            node_identity_map: HashMap::new(),
+        }
+    }
 
-        for gene in self.genome.topology {
+    fn initialize<'b: 'a>(&'b mut self) {
 
-            let node = graph.add_node( Nn::from(gene));
-            node_identity_map.entry(gene.innovation_number).or_insert(node.index());
+        //Add all neuron nodes
+        for neuron_id in &self.genome.neuron_id[..] {
+            let nge = NeuronalEneCode::new_from_enecode(neuron_id, &self.genome);
+            let neuron = Nn::from(nge);
+            let node = self.graph.add_node(neuron);
+            self.node_identity_map.entry(neuron_id).or_insert(node);
+        }
 
-            for (i, connection) in gene.outputs.iter().enumerate() {
-                graph.add_edge(node, connection, connection.syn[i]);
+        //Build Edges
+        for neuron_id in &self.genome.neuron_id[..] {
+            let nge = NeuronalEneCode::new_from_enecode(neuron_id, &self.genome);
+            for daughter in nge.topology.outputs.iter() {
+                self.graph.add_edge(self.node_identity_map[neuron_id], self.node_identity_map[daughter], ());
             }
         }
 
-        graph
     }
 }
