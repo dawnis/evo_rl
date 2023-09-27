@@ -103,21 +103,21 @@ impl EneCode {
 /// let neuron_id = "some_id";
 /// let neuronal_ene_code = NeuronalEneCode::new_from_enecode(neuron_id, &genome);
 /// ```
-pub struct NeuronalEneCode {
+pub struct NeuronalEneCode<'a> {
     pub neuron_id: String,
-    pub topology: TopologyGene,
-    pub properties: NeuronalPropertiesGene,
-    pub meta: MetaLearningGene,
+    pub topology: &'a TopologyGene,
+    pub properties: &'a NeuronalPropertiesGene,
+    pub meta: &'a MetaLearningGene,
 }
 
-impl NeuronalEneCode {
-    pub fn new_from_enecode(neuron_id: String, genome: &EneCode) -> Self {
-        let topology = genome.topology_gene(&neuron_id).clone();
+impl<'a> NeuronalEneCode<'a> {
+    pub fn new_from_enecode(neuron_id: String, genome: &'a EneCode) -> Self {
+        let topology = genome.topology_gene(&neuron_id);
         NeuronalEneCode {
             neuron_id,
             topology,
-            properties: genome.neuronal_props.clone(),
-            meta: genome.meta_learning.clone(), 
+            properties: &genome.neuronal_props,
+            meta: &genome.meta_learning, 
         }
     }
 }

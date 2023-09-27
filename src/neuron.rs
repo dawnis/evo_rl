@@ -1,8 +1,9 @@
 // TODO:
 // 1. backpropagation 
 // 2. evolvable synaptic learning
-extern crate nalgebra as na;
 
+use nalgebra as na;
+use std::sync::Arc;
 use crate::enecode::{NeuronalEneCode, NeuronType};
 use na::DVector;
 
@@ -36,8 +37,8 @@ pub struct Nn {
     pub neuron_type: NeuronType,
 }
 
-impl From<NeuronalEneCode> for Nn {
-    fn from(ene: NeuronalEneCode) -> Self {
+impl From<Arc<NeuronalEneCode<'_>>> for Nn {
+    fn from(ene: Arc<NeuronalEneCode>) -> Self {
         Nn {
             inputs: ene.topology.inputs.clone(),
             synaptic_weights: DVector::from_vec(ene.topology.genetic_weights.clone()), 
@@ -47,7 +48,7 @@ impl From<NeuronalEneCode> for Nn {
             learning_rate: ene.meta.learning_rate,
             learning_threshold: ene.meta.learning_threshold,
             tanh_alpha: ene.properties.tanh_alpha,
-            neuron_type: ene.topology.pin,
+            neuron_type: ene.topology.pin.clone(),
         }
     }
 }

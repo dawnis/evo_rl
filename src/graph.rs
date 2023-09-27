@@ -1,10 +1,11 @@
 use crate::neuron::Nn;
 use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use std::collections::HashMap;
+use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::Dfs;
 
-extern crate nalgebra as na;
+use nalgebra as na;
 use na::DVector;
 
 /// `FeedForwardNeuralNetwork` is a struct that represents a directed graph
@@ -60,7 +61,8 @@ impl FeedForwardNeuralNetwork {
         //Add all neuron nodes
         for neuron_id in &self.genome.neuron_id[..] {
             let nge = NeuronalEneCode::new_from_enecode(neuron_id.clone(), &self.genome);
-            let neuron = Nn::from(nge);
+            let arc_nge = Arc::new(nge);
+            let neuron = Nn::from(arc_nge.clone());
             let node = self.graph.add_node(neuron);
             self.node_identity_map.entry(neuron_id.clone()).or_insert(node);
         }
