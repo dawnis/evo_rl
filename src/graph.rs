@@ -8,16 +8,16 @@ extern crate nalgebra as na;
 use na::DVector;
 
 #[derive(Debug, Clone)]
-pub struct FeedForwardNeuralNetwork<'a> {
-    genome: EneCode<'a>,
-    graph: DiGraph<Nn<'a>, ()>,
-    node_identity_map: HashMap<&'a str, NodeIndex>,
+pub struct FeedForwardNeuralNetwork {
+    genome: EneCode,
+    graph: DiGraph<Nn, ()>,
+    node_identity_map: HashMap<String, NodeIndex>,
     network_output: Vec<f32>,
 }
 
-impl<'a> FeedForwardNeuralNetwork<'a> {
+impl FeedForwardNeuralNetwork {
 
-    pub fn new<'b: 'a>(genome: &'b EneCode) -> Self {
+    pub fn new(genome: EneCode) -> Self {
         FeedForwardNeuralNetwork {
             genome: genome.clone(),
             graph: DiGraph::new(),
@@ -26,19 +26,19 @@ impl<'a> FeedForwardNeuralNetwork<'a> {
         }
     }
 
-    pub fn initialize<'b: 'a>(&'b mut self) {
+    pub fn initialize(&mut self) {
 
         //Add all neuron nodes
         for neuron_id in &self.genome.neuron_id[..] {
-            let nge = NeuronalEneCode::new_from_enecode(neuron_id, &self.genome);
+            let nge = NeuronalEneCode::new_from_enecode(neuron_id.clone(), &self.genome);
             let neuron = Nn::from(nge);
             let node = self.graph.add_node(neuron);
-            self.node_identity_map.entry(neuron_id).or_insert(node);
+            self.node_identity_map.entry(neuron_id.clone()).or_insert(node);
         }
 
         //Build Edges
         for neuron_id in &self.genome.neuron_id[..] {
-            let nge = NeuronalEneCode::new_from_enecode(neuron_id, &self.genome);
+            let nge = NeuronalEneCode::new_from_enecode(neuron_id.clone(), &self.genome);
             for daughter in nge.topology.outputs.iter() {
                 self.graph.add_edge(self.node_identity_map[neuron_id], self.node_identity_map[daughter], ());
             }
@@ -47,8 +47,8 @@ impl<'a> FeedForwardNeuralNetwork<'a> {
     }
 
     fn fetch_network_input_neurons(&self) -> Vec<NodeIndex> {
-        let mut input_ids: Vec<&str> = self.genome.neuron_id.iter()
-            .filter(|&&x| x.starts_with("i"))
+        let mut input_ids: Vec<String> = self.genome.neuron_id.iter()
+            .filter(|&x| x.starts_with("i"))
             .cloned()
             .collect();
 
@@ -57,18 +57,7 @@ impl<'a> FeedForwardNeuralNetwork<'a> {
         input_ids.iter().map(|id| self.node_identity_map[id]).collect()
     }
 
-    fn parent_vector(&self, input_list: Vec<&str>) -> DVector<f32> {
-        let mut output_vector: Vec<f32> = Vec::new();
-
-        for pid in input_list.iter() {
-            let p_node = self.node_identity_map[pid];
-            output_vector.push(self.graph[p_node].output_value())
-        }
-
-        DVector::from_vec(output_vector)
-    }
-
-    pub fn fwd<'b>(&'b mut self, input: Vec<f32>) {
+    pub fn fwd(&mut self, input: Vec<f32>) {
         // For all input neurons, set values to input
         let input_nodes = self.fetch_network_input_neurons();
         assert_eq!(input.len(), input_nodes.len());
@@ -93,9 +82,14 @@ impl<'a> FeedForwardNeuralNetwork<'a> {
                 continue
             }
 
-            //for all other nodes propagate based on input vector from parent nodes
-            let node_input = self.parent_vector(self.graph[nx].inputs.clone());
-            self.graph[nx].propagate(node_input);
+            let mut ip: Vec<f32> = Vec::new();
+
+            for pid in self.graph[nx].inputs.iter() {
+                let p_node = self.node_identity_map[pid];
+                ip.push(self.graph[p_node].output_value())
+            }
+
+            self.graph[nx].propagate(DVector::from_vec(ip));
 
             match self.graph[nx].neuron_type {
                 NeuronType::Out => network_output.push( self.graph[nx].output_value() ),

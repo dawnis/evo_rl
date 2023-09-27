@@ -10,10 +10,10 @@ use na::DVector;
 
 
 #[derive(Debug, Clone)]
-pub struct Nn<'a> {
+pub struct Nn {
     pub synaptic_weights: DVector<f32>,
     pub synaptic_bias: f32,
-    pub inputs: Vec<&'a str>,
+    pub inputs: Vec<String>,
     pub activation_level: f32,
     pub tau: f32,
     pub learning_threshold: f32,
@@ -22,8 +22,8 @@ pub struct Nn<'a> {
     pub neuron_type: NeuronType,
 }
 
-impl<'a> From<NeuronalEneCode<'a>> for Nn<'a> {
-    fn from(ene: NeuronalEneCode<'a>) -> Self {
+impl From<NeuronalEneCode> for Nn {
+    fn from(ene: NeuronalEneCode) -> Self {
         Nn {
             inputs: ene.topology.inputs.clone(),
             synaptic_weights: DVector::from_vec(ene.topology.genetic_weights.clone()), 
@@ -38,7 +38,7 @@ impl<'a> From<NeuronalEneCode<'a>> for Nn<'a> {
     }
 }
 
-impl<'a> Nn<'a> {
+impl Nn{
 
     //computes next state of neuron 
     pub fn propagate(&mut self, input: DVector<f32>) {
