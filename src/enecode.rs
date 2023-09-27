@@ -31,18 +31,19 @@ impl<'a> EneCode<'a> {
 //Genetic Makeup of an Individual Neuron
 pub struct NeuronalEneCode<'a> {
     pub neuron_id: &'a str,
-    pub topology: &'a TopologyGene<'a>,
-    pub properties: &'a NeuronalPropertiesGene<'a>,
-    pub meta: &'a MetaLearningGene<'a>,
+    pub topology: TopologyGene<'a>,
+    pub properties: NeuronalPropertiesGene<'a>,
+    pub meta: MetaLearningGene<'a>,
 }
 
 impl<'a> NeuronalEneCode<'a> {
     pub fn new_from_enecode(neuron_id: &'a str, genome: &'a EneCode) -> Self {
+        let topology = genome.topology_gene(neuron_id).clone();
         NeuronalEneCode {
-            neuron_id,
-            topology: genome.topology_gene(neuron_id),
-            properties: &genome.neuronal_props,
-            meta: &genome.meta_learning, 
+            neuron_id: neuron_id.clone(),
+            topology: topology,
+            properties: genome.neuronal_props.clone(),
+            meta: genome.meta_learning.clone(), 
         }
     }
 }

@@ -12,6 +12,7 @@ pub struct FeedForwardNeuralNetwork<'a> {
     genome: EneCode<'a>,
     graph: DiGraph<Nn<'a>, ()>,
     node_identity_map: HashMap<&'a str, NodeIndex>,
+    network_output: Vec<f32>,
 }
 
 impl<'a> FeedForwardNeuralNetwork<'a> {
@@ -21,6 +22,7 @@ impl<'a> FeedForwardNeuralNetwork<'a> {
             genome: genome.clone(),
             graph: DiGraph::new(),
             node_identity_map: HashMap::new(),
+            network_output: Vec::new(),
         }
     }
 
@@ -44,7 +46,7 @@ impl<'a> FeedForwardNeuralNetwork<'a> {
 
     }
 
-    fn fetch_network_input_neurons(&mut self) -> Vec<NodeIndex> {
+    fn fetch_network_input_neurons(&self) -> Vec<NodeIndex> {
         let mut input_ids: Vec<&str> = self.genome.neuron_id.iter()
             .filter(|&&x| x.starts_with("i"))
             .cloned()
@@ -66,7 +68,7 @@ impl<'a> FeedForwardNeuralNetwork<'a> {
         DVector::from_vec(output_vector)
     }
 
-    pub fn fwd(&mut self, input: Vec<f32>) -> Vec<f32> {
+    pub fn fwd<'b>(&'b mut self, input: Vec<f32>) {
         // For all input neurons, set values to input
         let input_nodes = self.fetch_network_input_neurons();
         assert_eq!(input.len(), input_nodes.len());
@@ -102,6 +104,12 @@ impl<'a> FeedForwardNeuralNetwork<'a> {
 
         }
 
-        network_output
+        self.network_output = network_output;
     }
+
+    pub fn fetch_network_output(&self) -> Vec<f32> {
+        self.network_output.clone()
+    }
+
+
 }
