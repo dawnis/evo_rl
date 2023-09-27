@@ -7,6 +7,32 @@ use petgraph::visit::Dfs;
 extern crate nalgebra as na;
 use na::DVector;
 
+/// `FeedForwardNeuralNetwork` is a struct that represents a directed graph
+/// based feed-forward neural network, initialized from an `EneCode` genome.
+///
+/// The struct encapsulates the genome (genetic blueprint), graph-based network,
+/// node-identity mapping, and network output.
+///
+/// # Fields
+/// * `genome` - The genetic blueprint (`EneCode`) of the neural network.
+/// * `graph` - The directed graph (`DiGraph`) from `petgraph` that represents the network.
+/// * `node_identity_map` - A HashMap mapping each neuron ID (`String`) to its index (`NodeIndex`) in the graph.
+/// * `network_output` - A vector holding the output values of the output neurons.
+///
+/// # Example Usage
+/// ```rust
+/// use crate::graph::FeedForwardNeuralNetwork;
+/// use crate::enecode::EneCode;
+///
+/// // Assume genome is a properly initialized EneCode
+/// let mut network = FeedForwardNeuralNetwork::new(genome);
+/// network.initialize();
+///
+/// // Assume input is a properly initialized Vec<f32>
+/// network.fwd(input);
+///
+/// let output = network.fetch_network_output();
+/// ```
 #[derive(Debug, Clone)]
 pub struct FeedForwardNeuralNetwork {
     genome: EneCode,
@@ -17,6 +43,7 @@ pub struct FeedForwardNeuralNetwork {
 
 impl FeedForwardNeuralNetwork {
 
+    /// Create a new `FeedForwardNeuralNetwork` from an `EneCode` genome.
     pub fn new(genome: EneCode) -> Self {
         FeedForwardNeuralNetwork {
             genome: genome.clone(),
@@ -26,6 +53,8 @@ impl FeedForwardNeuralNetwork {
         }
     }
 
+    /// Initialize the neural network graph from the genome.
+    /// Adds neurons as nodes and synaptic connections as edges.
     pub fn initialize(&mut self) {
 
         //Add all neuron nodes
@@ -46,6 +75,7 @@ impl FeedForwardNeuralNetwork {
 
     }
 
+    /// Helper function to identify all input neurons in the network.
     fn fetch_network_input_neurons(&self) -> Vec<NodeIndex> {
         let mut input_ids: Vec<String> = self.genome.neuron_id.iter()
             .filter(|&x| x.starts_with("i"))
@@ -57,6 +87,8 @@ impl FeedForwardNeuralNetwork {
         input_ids.iter().map(|id| self.node_identity_map[id]).collect()
     }
 
+    /// Forward propagate through the neural network.
+    /// This function takes a vector of input values and populates the network output.
     pub fn fwd(&mut self, input: Vec<f32>) {
         // For all input neurons, set values to input
         let input_nodes = self.fetch_network_input_neurons();
@@ -101,6 +133,7 @@ impl FeedForwardNeuralNetwork {
         self.network_output = network_output;
     }
 
+    /// Fetch the output of the network as a vector of floating-point numbers.
     pub fn fetch_network_output(&self) -> Vec<f32> {
         self.network_output.clone()
     }

@@ -1,7 +1,5 @@
-// basic neuron in evorl
-// learning based on combination of backprop and hebbian principles
 // TODO:
-// 1. smooth parameters for non-linearities
+// 1. backpropagation 
 // 2. evolvable synaptic learning
 extern crate nalgebra as na;
 
@@ -9,6 +7,22 @@ use crate::enecode::{NeuronalEneCode, NeuronType};
 use na::DVector;
 
 
+//// `Nn` is a struct that defines an Artificial Neuron.
+/// 
+/// # Fields
+/// * `synaptic_weights` - A vector of synaptic weights.
+/// * `synaptic_bias` - A synaptic bias for the neuron.
+/// * `inputs` - A list of input neurons.
+/// * `activation_level` - The neuron's activation level.
+/// * `tau` - The neuron's time constant.
+/// * `learning_threshold` - The neuron's learning threshold.
+/// * `learning_rate` - The neuron's learning rate.
+/// * `tanh_alpha` - The neuron's hyperbolic tangent alpha parameter.
+/// * `neuron_type` - The type of the neuron: Input, Output, or Hidden.
+///
+/// # Example
+/// ```rust
+/// // code example here
 #[derive(Debug, Clone)]
 pub struct Nn {
     pub synaptic_weights: DVector<f32>,
@@ -40,7 +54,15 @@ impl From<NeuronalEneCode> for Nn {
 
 impl Nn{
 
-    //computes next state of neuron 
+    /// Propagates the input through the neuron to compute the next state.
+    ///
+    /// # Arguments
+    /// * `input` - A DVector of input values.
+    ///
+    /// # Example
+    /// ```rust
+    /// // code example here
+    /// ```
     pub fn propagate(&mut self, input: DVector<f32>) {
         match self.neuron_type {
             NeuronType::In => {
@@ -51,7 +73,15 @@ impl Nn{
         }
     }
 
-    //returns the output value of the neuron
+    /// Returns the output value of the neuron.
+    ///
+    /// # Returns
+    /// The output value as a floating-point number.
+    ///
+    /// # Example
+    /// ```rust
+    /// // code example here
+    /// ```
     pub fn output_value(&self) -> f32 {
         match self.neuron_type {
             NeuronType::In => self.activation_level,
