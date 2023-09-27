@@ -51,9 +51,7 @@ impl<'a> NeuronalEneCode<'a> {
 pub enum NeuronType {
     In,
     Out,
-    Bias,
     Hidden,
-    
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +61,7 @@ pub struct TopologyGene<'a> {
     pub inputs: Vec<&'a str>,
     pub outputs: Vec<&'a str>,
     pub genetic_weights: Vec<f32>,
+    pub genetic_bias: f32,
     pub active: bool,
 }
 
@@ -71,7 +70,7 @@ pub struct NeuronalPropertiesGene<'a> {
     pub innovation_number: &'a str,
     pub tau: f32,
     pub homeostatic_force: f32,
-    pub alpha: f32
+    pub tanh_alpha: f32,
 }
 
 #[derive(Debug, Copy, Clone)]

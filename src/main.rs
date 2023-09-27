@@ -9,7 +9,7 @@ fn main() {
     //3. Move this to a unit Test
 
     let xor_network_genome = EneCode {
-        neuron_id: vec!["i01", "b", "i02", "D", "E"],
+        neuron_id: vec!["i01", "i02", "D", "E"],
         topology: vec![
             TopologyGene {
                 innovation_number: "i01",
@@ -17,15 +17,7 @@ fn main() {
                 inputs: vec![],
                 outputs: vec!["D", "E"],
                 genetic_weights: vec![],
-                active: true,
-            },
-
-            TopologyGene {
-                innovation_number: "b",
-                pin: NeuronType::Bias,
-                inputs: vec![],
-                outputs: vec!["D", "E"],
-                genetic_weights: vec![],
+                genetic_bias: 0.,
                 active: true,
             },
 
@@ -35,6 +27,7 @@ fn main() {
                 inputs: vec![],
                 outputs: vec!["D", "E"],
                 genetic_weights: vec![],
+                genetic_bias: 0.,
                 active: true,
             },
 
@@ -44,6 +37,7 @@ fn main() {
                 inputs: vec!["b", "i01", "i02"],
                 outputs: vec!["E"],
                 genetic_weights: vec![1., 0.2, 0.3],
+                genetic_bias: 0.,
                 active: true,
             },
 
@@ -53,6 +47,7 @@ fn main() {
                 inputs: vec!["b", "i01", "i02", "D"],
                 outputs: vec![],
                 genetic_weights: vec![1., -0.1, 0.3],
+                genetic_bias: 0.,
                 active: true,
             },
         ],
@@ -60,7 +55,7 @@ fn main() {
             innovation_number: "p01",
             tau: 0.,
             homeostatic_force: 0.,
-            alpha: 1.,
+            tanh_alpha: 1.,
         },
         meta_learning: MetaLearningGene {
             innovation_number: "m01",
