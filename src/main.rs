@@ -38,9 +38,9 @@ fn main() {
             TopologyGene {
                 innovation_number: "D".to_string(),
                 pin: NeuronType::Hidden,
-                inputs: vec!["b".to_string(), "i01".to_string(), "i02".to_string()],
+                inputs: vec!["i01".to_string(), "i02".to_string()],
                 outputs: vec!["E".to_string()],
-                genetic_weights: vec![1., 0.2, 0.3],
+                genetic_weights: vec![0.2, 0.3],
                 genetic_bias: 0.,
                 active: true,
             },
@@ -48,9 +48,9 @@ fn main() {
             TopologyGene {
                 innovation_number: "E".to_string(),
                 pin: NeuronType::Out,
-                inputs: vec!["b".to_string(), "i01".to_string(), "i02".to_string(), "D".to_string()],
+                inputs: vec!["i01".to_string(), "i02".to_string(), "D".to_string()],
                 outputs: vec![],
-                genetic_weights: vec![1., -0.1, 0.3],
+                genetic_weights: vec![-0.1, 0.3, 0.4],
                 genetic_bias: 0.,
                 active: true,
             },

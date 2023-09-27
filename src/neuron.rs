@@ -65,6 +65,7 @@ impl Nn{
     }
 
     fn fwd(&mut self, input_values: DVector<f32>) {
+        assert_eq!(input_values.len(), self.synaptic_weights.len());
         let impulse: f32 = input_values.dot(&self.synaptic_weights);
         self.activation_level = self.activation_level * (-self.tau).exp() + impulse + self.synaptic_bias;
         self.learn();
