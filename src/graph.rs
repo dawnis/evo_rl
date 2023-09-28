@@ -22,14 +22,17 @@ use na::DVector;
 ///
 /// # Example Usage
 /// ```rust
-/// use crate::graph::FeedForwardNeuralNetwork;
-/// use crate::enecode::EneCode;
+/// # use evo_rl::doctest::GENOME_EXAMPLE;
+/// use evo_rl::graph::FeedForwardNeuralNetwork;
+/// use evo_rl::enecode::EneCode;
 ///
 /// // Assume genome is a properly initialized EneCode
+/// # let genome = GENOME_EXAMPLE.clone();
 /// let mut network = FeedForwardNeuralNetwork::new(genome);
 /// network.initialize();
 ///
 /// // Assume input is a properly initialized Vec<f32>
+/// # let input: Vec<f32> = vec![0.];
 /// network.fwd(input);
 ///
 /// let output = network.fetch_network_output();
@@ -141,4 +144,28 @@ impl FeedForwardNeuralNetwork {
     }
 
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_initialize() {
+        // Your test code here
+        // Create an EneCode and use it to initialize a FeedForwardNeuralNetwork
+        // Validate that the graph is built correctly
+    }
+
+    #[test]
+    fn test_fwd() {
+        // Your test code here
+        // Test the forward pass and verify that the network_output is as expected
+    }
+
+    #[test]
+    fn test_fetch_network_output() {
+        // Your test code here
+        // Test that the fetch_network_output function returns the expected output
+    }
 }

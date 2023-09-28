@@ -45,6 +45,9 @@ lazy_static! {
          learning_rate: 0.01,
          learning_threshold: 0.5,
      },
- };
+    };
+
 }
+
+
 

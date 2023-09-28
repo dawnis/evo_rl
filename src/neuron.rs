@@ -164,10 +164,10 @@ mod tests {
 
         };
 
-        let mut hidden_neuron = Nn::from(Arc::new(nec));
-        hidden_neuron.propagate(DVector::from_vec(vec![3., 2.]));
+        let mut neuron = Nn::from(Arc::new(nec));
+        neuron.propagate(DVector::from_vec(vec![3., 2.]));
 
-        assert_eq!(hidden_neuron.activation_level, 17.);
+        assert_eq!(neuron.activation_level, 17.);
 
     }
 
@@ -183,16 +183,27 @@ mod tests {
 
         };
 
-        let mut hidden_neuron = Nn::from(Arc::new(nec));
-        hidden_neuron.propagate(DVector::from_vec(vec![2.14]));
+        let mut neuron = Nn::from(Arc::new(nec));
+        neuron.propagate(DVector::from_vec(vec![2.14]));
 
-        assert_eq!(hidden_neuron.activation_level, 2.14);
+        assert_eq!(neuron.activation_level, 2.14);
     }
     
     #[test]
     fn test_output_value() {
-        // Your test code here
-        // Check if the output_value function returns the expected value
+        let nec = NeuronalEneCode {
+            neuron_id: "h01".to_string(),
+            topology: &topology_gene_test(NeuronType::Hidden),
+            properties: &neuronal_properties_gene_test(),
+            meta: &meta_gene_test()
+
+        };
+
+        let mut neuron = Nn::from(Arc::new(nec));
+        neuron.propagate(DVector::from_vec(vec![3., 2.]));
+
+        assert_eq!(neuron.activation_level, 17.);
+        assert_eq!(neuron.output_value(), (17_f32).tanh());
     }
 }
 

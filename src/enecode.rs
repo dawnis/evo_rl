@@ -21,11 +21,11 @@
 ///
 /// # Example Usage
 /// ```rust
-/// use crate::enecode::EneCode;
-/// use crate::enecode::TopologyGene;
-/// use crate::enecode::NeuronalPropertiesGene;
-/// use crate::enecode::MetaLearningGene;
-/// use crate::enecode::NeuronType;
+/// use evo_rl::enecode::EneCode;
+/// use evo_rl::enecode::TopologyGene;
+/// use evo_rl::enecode::NeuronalPropertiesGene;
+/// use evo_rl::enecode::MetaLearningGene;
+/// use evo_rl::enecode::NeuronType;
 ///
 /// // Initialization (example)
 /// let genome = EneCode {
@@ -43,13 +43,13 @@
 ///         // ... more TopologyGene
 ///     ],
 ///     neuronal_props: NeuronalPropertiesGene {
-///         innovation_number: "Global".to_string(),
+///         innovation_number: "NP01".to_string(),
 ///         tau: 0.9,
 ///         homeostatic_force: 0.1,
 ///         tanh_alpha: 2.0,
 ///     },
 ///     meta_learning: MetaLearningGene {
-///         innovation_number: "Global".to_string(),
+///         innovation_number: "MTL01".to_string(),
 ///         learning_rate: 0.01,
 ///         learning_threshold: 0.5,
 ///     },
@@ -96,13 +96,16 @@ impl EneCode {
 ///
 /// # Example
 /// ```rust
-/// use crate::enecode::NeuronalEneCode;
-/// use crate::enecode::EneCode;
+/// # use evo_rl::doctest::GENOME_EXAMPLE;
+/// use evo_rl::enecode::NeuronalEneCode;
+/// use evo_rl::enecode::EneCode;
 ///
 /// // Assume `genome` is a properly initialized EneCode
-/// let neuron_id = "some_id";
+/// # let genome = GENOME_EXAMPLE.clone();
+/// let neuron_id = "N1".to_string();
 /// let neuronal_ene_code = NeuronalEneCode::new_from_enecode(neuron_id, &genome);
 /// ```
+#[derive(Debug, Clone, PartialEq)]
 pub struct NeuronalEneCode<'a> {
     pub neuron_id: String,
     pub topology: &'a TopologyGene,
@@ -122,7 +125,7 @@ impl<'a> NeuronalEneCode<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NeuronType {
     In,
     Out,
@@ -139,7 +142,7 @@ pub enum NeuronType {
 /// * `genetic_weights` - Weights for each of the input neurons.
 /// * `genetic_bias` - The bias term for the neuron.
 /// * `active` - Whether the neuron is currently active.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TopologyGene {
     pub innovation_number: String,
     pub pin: NeuronType, //stolen from python-neat for outside connections
@@ -157,7 +160,7 @@ pub struct TopologyGene {
 /// * `tau` - The time constant for the neuron.
 /// * `homeostatic_force` - Homeostatic force for neuron.
 /// * `tanh_alpha` - Scaling factor for tanh activation function.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NeuronalPropertiesGene {
     pub innovation_number: String,
     pub tau: f32,
@@ -171,9 +174,46 @@ pub struct NeuronalPropertiesGene {
 /// * `innovation_number` - Unique identifier for this particular gene.
 /// * `learning_rate` - Learning rate for synaptic adjustments.
 /// * `learning_threshold` - Learning threshold for synaptic adjustments.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MetaLearningGene {
     pub innovation_number: String,
     pub learning_rate: f32,
     pub learning_threshold: f32
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::doctest::GENOME_EXAMPLE;
+
+    #[test]
+    fn test_new_from_enecode() {
+        // Create an EneCode instance and use it to initialize a NeuronalEneCode
+
+        let neuronal_ene_code = NeuronalEneCode::new_from_enecode(String::from("N1"), &GENOME_EXAMPLE);
+
+        let expected_nec: NeuronalEneCode = NeuronalEneCode {
+         neuron_id: String::from("N1"),
+         topology: &TopologyGene {
+                 innovation_number: "N1".to_string(),
+                 pin: NeuronType::Hidden,
+                 inputs: vec!["input_1".to_string()],
+                 outputs: vec!["output_1".to_string()],
+                 genetic_weights: vec![0.5],
+                 genetic_bias: 0.1,
+                 active: true }, 
+        properties: &GENOME_EXAMPLE.neuronal_props,
+        meta: &GENOME_EXAMPLE.meta_learning,
+        };
+
+        // Validate that the properties have been copied over correctly
+        assert_eq!(neuronal_ene_code, expected_nec);
+    }
+
+    #[test]
+    fn test_topology_gene() {
+        let topology_gene_n1 = GENOME_EXAMPLE.topology_gene(&String::from("N1"));
+        assert_eq!(String::from("N1"), topology_gene_n1.innovation_number);
+    }
+}
+

@@ -1,8 +1,8 @@
 pub mod neuron;
 pub mod enecode;
 pub mod graph;
+pub mod doctest;
 
-use ndarray::prelude::*;
 use polars::prelude::*;
 use std::path::PathBuf;
 
