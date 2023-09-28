@@ -117,3 +117,82 @@ impl Nn{
 
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::enecode::*;
+    use super::*;
+
+    fn meta_gene_test() -> MetaLearningGene {
+        MetaLearningGene {
+            innovation_number: "mtg01".to_string(),
+            learning_rate: 0.001,
+            learning_threshold: 0.5,
+        }
+    }
+
+
+    fn neuronal_properties_gene_test() -> NeuronalPropertiesGene {
+        NeuronalPropertiesGene {
+            innovation_number: "npg01".to_string(),
+            tau: 0.,
+            homeostatic_force: 0., 
+            tanh_alpha: 1.,
+        }
+    }
+
+    fn topology_gene_test(n_type: NeuronType) -> TopologyGene {
+        TopologyGene {
+            innovation_number: "h01".to_string(),
+            pin: n_type,
+            inputs: vec!["i01".to_string()],
+            outputs: vec!["F".to_string()],
+            genetic_weights: vec![2., 3.],
+            genetic_bias: 5.,
+            active: true,
+        }
+    }
+
+    #[test]
+    fn test_propagate_hidden_neuron() {
+        // Create a NeuronalEneCode and use it to initialize an Nn with NeuronType::Hidden
+        //
+        let nec = NeuronalEneCode {
+            neuron_id: "h01".to_string(),
+            topology: &topology_gene_test(NeuronType::Hidden),
+            properties: &neuronal_properties_gene_test(),
+            meta: &meta_gene_test()
+
+        };
+
+        let mut hidden_neuron = Nn::from(Arc::new(nec));
+        hidden_neuron.propagate(DVector::from_vec(vec![3., 2.]));
+
+        assert_eq!(hidden_neuron.activation_level, 17.);
+
+    }
+
+    #[test]
+    fn test_propagate_in_neuron() {
+        // Create a NeuronalEneCode and use it to initialize an Nn with NeuronType::In
+        //
+        let nec = NeuronalEneCode {
+            neuron_id: "h01".to_string(),
+            topology: &topology_gene_test(NeuronType::In),
+            properties: &neuronal_properties_gene_test(),
+            meta: &meta_gene_test()
+
+        };
+
+        let mut hidden_neuron = Nn::from(Arc::new(nec));
+        hidden_neuron.propagate(DVector::from_vec(vec![2.14]));
+
+        assert_eq!(hidden_neuron.activation_level, 2.14);
+    }
+    
+    #[test]
+    fn test_output_value() {
+        // Your test code here
+        // Check if the output_value function returns the expected value
+    }
+}
+
