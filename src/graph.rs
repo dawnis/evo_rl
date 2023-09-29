@@ -3,11 +3,7 @@ use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use std::collections::HashMap;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
-use petgraph::stable_graph::EdgeIndex;
 use petgraph::visit::Dfs;
-
-use nalgebra as na;
-use na::DVector;
 
 /// `FeedForwardNeuralNetwork` is a struct that represents a directed graph
 /// based feed-forward neural network, initialized from an `EneCode` genome.
