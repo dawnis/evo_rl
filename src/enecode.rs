@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 /// `EneCode` encapsulates the genetic blueprint for constructing an entire neural network.
 ///
 /// This struct holds all the information required to instantiate a neural network with
@@ -26,6 +27,7 @@
 /// use evo_rl::enecode::NeuronalPropertiesGene;
 /// use evo_rl::enecode::MetaLearningGene;
 /// use evo_rl::enecode::NeuronType;
+/// # use std::collections::HashMap;
 ///
 /// // Initialization (example)
 /// let genome = EneCode {
@@ -34,9 +36,8 @@
 ///         TopologyGene {
 ///             innovation_number: "N1".to_string(),
 ///             pin: NeuronType::In,
-///             inputs: vec![],
+///             inputs: HashMap::new(),
 ///             outputs: vec!["N2".to_string()],
-///             genetic_weights: vec![0.5],
 ///             genetic_bias: 0.1,
 ///             active: true
 ///         },
@@ -146,9 +147,8 @@ pub enum NeuronType {
 pub struct TopologyGene {
     pub innovation_number: String,
     pub pin: NeuronType, //stolen from python-neat for outside connections
-    pub inputs: Vec<String>,
+    pub inputs: HashMap<String, f32>, //map that defines genetic weight of synapse for each parent
     pub outputs: Vec<String>,
-    pub genetic_weights: Vec<f32>,
     pub genetic_bias: f32,
     pub active: bool,
 }
@@ -192,14 +192,16 @@ mod tests {
 
         let neuronal_ene_code = NeuronalEneCode::new_from_enecode(String::from("N1"), &GENOME_EXAMPLE);
 
+        let mut input_map = HashMap::new();
+        input_map.insert(String::from("input_1"), 0.5_f32);
+
         let expected_nec: NeuronalEneCode = NeuronalEneCode {
          neuron_id: String::from("N1"),
          topology: &TopologyGene {
                  innovation_number: "N1".to_string(),
                  pin: NeuronType::Hidden,
-                 inputs: vec!["input_1".to_string()],
+                 inputs: input_map,
                  outputs: vec!["output_1".to_string()],
-                 genetic_weights: vec![0.5],
                  genetic_bias: 0.1,
                  active: true }, 
         properties: &GENOME_EXAMPLE.neuronal_props,
