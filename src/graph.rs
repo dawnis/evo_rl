@@ -3,6 +3,7 @@ use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use std::collections::HashMap;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::stable_graph::EdgeIndex;
 use petgraph::visit::Dfs;
 
 use nalgebra as na;
@@ -40,7 +41,7 @@ use na::DVector;
 #[derive(Debug, Clone)]
 pub struct FeedForwardNeuralNetwork {
     genome: EneCode,
-    graph: DiGraph<Nn, ()>,
+    graph: DiGraph<Nn, f32>,
     node_identity_map: HashMap<String, NodeIndex>,
     network_output: Vec<f32>,
 }
@@ -71,10 +72,12 @@ impl FeedForwardNeuralNetwork {
         }
 
         //Build Edges
-        for neuron_id in &self.genome.neuron_id[..] {
-            let nge = NeuronalEneCode::new_from_enecode(neuron_id.clone(), &self.genome);
-            for daughter in nge.topology.outputs.iter() {
-                self.graph.add_edge(self.node_identity_map[neuron_id], self.node_identity_map[daughter], ());
+        for daughter in &self.genome.neuron_id[..] {
+            let nge = NeuronalEneCode::new_from_enecode(daughter.clone(), &self.genome);
+            for parent in nge.topology.inputs.keys() {
+                self.graph.add_edge(self.node_identity_map[parent], 
+                                    self.node_identity_map[daughter], 
+                                    nge.topology.inputs[parent]);
             }
         }
 
@@ -100,8 +103,7 @@ impl FeedForwardNeuralNetwork {
         assert_eq!(input.len(), input_nodes.len());
 
         for (i, &node) in input_nodes.iter().enumerate() {
-            let input_value_dvec = DVector::from_vec(vec![input[i]]);
-            self.graph[node].propagate(input_value_dvec);
+            self.graph[node].propagate(input[i]);
         }
 
         // Create a Dfs iterator starting from node `i01`
@@ -114,19 +116,25 @@ impl FeedForwardNeuralNetwork {
         // Iterate over the nodes in depth-first order
         while let Some(nx) = dfs.next(&self.graph) {
 
-            //do nothing for input nodes
-            if input_nodes.contains(&nx) {
-                continue
+            let node_parents = self.graph.neighbors_directed(nx, petgraph::Direction::Incoming);
+
+            let mut dot_product: f32 = 0.;
+
+            for pnode in node_parents {
+
+
+                //grab current synaptic weights
+                let edge = self.graph.find_edge(pnode, nx);
+
+                let synaptic_value: f32 = match edge {
+                    Some(syn) => *self.graph.edge_weight(syn).expect("Connection was not initialized!"),
+                    None => panic!("Improper Edge")
+                };
+
+                dot_product = dot_product + synaptic_value * self.graph[pnode].output_value();
             }
 
-            let mut ip: Vec<f32> = Vec::new();
-
-            for pid in self.graph[nx].inputs.iter() {
-                let p_node = self.node_identity_map[pid];
-                ip.push(self.graph[p_node].output_value())
-            }
-
-            self.graph[nx].propagate(DVector::from_vec(ip));
+            self.graph[nx].propagate(dot_product);
 
             match self.graph[nx].neuron_type {
                 NeuronType::Out => network_output.push( self.graph[nx].output_value() ),
