@@ -7,7 +7,9 @@ edition = "2021"
 
 [dependencies]
 lazy_static = "1.4.0"
-rand = "0.8.5"
+rand = { version = "0.8.5", features = ["small_rng"] }
+rand_distr = "0.4.3"
+rand_seeder = "0.2.3"
 nalgebra = "0.32.3"
 polars = { version = "0.32.1", features = ["lazy"] }
 ndarray = { version = "0.15.6", features = ["serde"] }

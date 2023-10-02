@@ -1,5 +1,7 @@
 use crate::neuron::Nn;
 use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
+use rand::prelude::*;
+use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
@@ -77,6 +79,21 @@ impl FeedForwardNeuralNetwork {
             }
         }
 
+    }
+
+    /// Mutates connections in the network given the current mutation rate
+    fn mutate_synapses(&mut self, epsilon: f32) {
+        let mut rng = rand::thread_rng();
+
+        //synaptic mutation
+        let normal = Normal::new(0., 1.).unwrap();
+        for edge_index in self.graph.edge_indices() {
+            if rng.gen::<f32>() < epsilon {
+                let new_weight: f32 = self.graph[edge_index] + normal.sample(&mut rng);
+                self.graph[edge_index] = if new_weight > 0. {new_weight} else {0.};
+            }
+
+        }
     }
 
     /// Helper function to identify all input neurons in the network.
