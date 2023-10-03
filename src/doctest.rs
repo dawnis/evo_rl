@@ -25,7 +25,7 @@ lazy_static! {
              pin: NeuronType::In,
              inputs: HashMap::new(),
              outputs: vec!["N1".to_string()],
-             genetic_bias: 0.1,
+             genetic_bias: 0.0,
              active: true
          },
          TopologyGene {

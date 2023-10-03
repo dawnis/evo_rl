@@ -193,15 +193,17 @@ mod tests {
     }
 
     #[test]
-    fn test_fwd() {
-        // Your test code here
-        // Test the forward pass and verify that the network_output is as expected
-    }
+    fn test_fwd_fetch_network_output() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut network_example = FeedForwardNeuralNetwork::new(genome);
+        network_example.initialize();
 
-    #[test]
-    fn test_fetch_network_output() {
-        // Your test code here
-        // Test that the fetch_network_output function returns the expected output
+        network_example.fwd(vec![2.]);
+        // Test the forward pass and verify that the network_output is as expected
+        
+        let network_out = network_example.fetch_network_output();
+
+        assert!(network_out[0] > 0.);
     }
 
     #[test]
