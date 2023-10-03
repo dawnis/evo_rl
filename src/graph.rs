@@ -86,7 +86,7 @@ impl FeedForwardNeuralNetwork {
         let mut rng = rand::thread_rng();
 
         //synaptic mutation
-        let normal = Normal::new(0., 1.).unwrap();
+        let normal = Normal::new(0., 0.1).unwrap();
         for edge_index in self.graph.edge_indices() {
             if rng.gen::<f32>() < epsilon {
                 let new_weight: f32 = self.graph[edge_index] + normal.sample(&mut rng);
