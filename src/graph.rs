@@ -82,7 +82,7 @@ impl FeedForwardNeuralNetwork {
     }
 
     /// Mutates connections in the network given the current mutation rate
-    fn mutate_synapses(&mut self, epsilon: f32) {
+    pub fn mutate_synapses(&mut self, epsilon: f32) {
         let mut rng = rand::thread_rng();
 
         //synaptic mutation
@@ -198,15 +198,36 @@ mod tests {
         let mut network_example = FeedForwardNeuralNetwork::new(genome);
         network_example.initialize();
 
-        network_example.fwd(vec![2.]);
+        network_example.fwd(vec![0.]);
         // Test the forward pass and verify that the network_output is as expected
         
         let network_out = network_example.fetch_network_output();
 
-        assert!(network_out[0] > 0.);
+        assert_eq!(network_out[0],  0.);
     }
 
     #[test]
     fn test_mutate_synapses() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut network_example = FeedForwardNeuralNetwork::new(genome);
+        network_example.initialize();
+
+        let gt = GENOME_EXAMPLE.clone();
+        let n1gene = gt.topology_gene(&String::from("N1"));
+        let weight_before_mut: f32 = n1gene.inputs["input_1"];
+
+        let epsilon: f32 = 1.;
+
+        network_example.mutate_synapses(epsilon);
+
+        let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
+
+        let synaptic_value: f32 = match in1_n1_edge {
+            Some(syn) => *network_example.graph.edge_weight(syn).expect("Edge not found!!"),
+            None => panic!("No weight at edge index")
+        };
+
+        assert_ne!(synaptic_value, weight_before_mut);
+
     }
 }

@@ -193,7 +193,7 @@ mod tests {
         let neuronal_ene_code = NeuronalEneCode::new_from_enecode(String::from("N1"), &GENOME_EXAMPLE);
 
         let mut input_map = HashMap::new();
-        input_map.insert(String::from("input_1"), 0.5_f32);
+        input_map.insert(String::from("input_1"), 1.0_f32);
 
         let expected_nec: NeuronalEneCode = NeuronalEneCode {
          neuron_id: String::from("N1"),
@@ -202,7 +202,7 @@ mod tests {
                  pin: NeuronType::Hidden,
                  inputs: input_map,
                  outputs: vec!["output_1".to_string()],
-                 genetic_bias: 0.1,
+                 genetic_bias: 0.0,
                  active: true }, 
         properties: &GENOME_EXAMPLE.neuronal_props,
         meta: &GENOME_EXAMPLE.meta_learning,

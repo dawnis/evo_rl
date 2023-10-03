@@ -31,9 +31,9 @@ lazy_static! {
          TopologyGene {
              innovation_number: "N1".to_string(),
              pin: NeuronType::Hidden,
-             inputs: hash_em(vec!["input_1"], vec![0.5]),
+             inputs: hash_em(vec!["input_1"], vec![1.0]),
              outputs: vec!["output_1".to_string()],
-             genetic_bias: 0.1,
+             genetic_bias: 0.0,
              active: true
          },
          TopologyGene {
@@ -41,7 +41,7 @@ lazy_static! {
              pin: NeuronType::Out,
              inputs: hash_em(vec!["N1"], vec![0.5]),
              outputs: vec![],
-             genetic_bias: 0.1,
+             genetic_bias: 0.0,
              active: true
          },
          // ... more TopologyGene
