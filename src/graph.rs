@@ -170,12 +170,26 @@ impl FeedForwardNeuralNetwork {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::doctest::GENOME_EXAMPLE;
 
     #[test]
     fn test_initialize() {
-        // Your test code here
+        let genome = GENOME_EXAMPLE.clone();
+
         // Create an EneCode and use it to initialize a FeedForwardNeuralNetwork
+        let mut network_example = FeedForwardNeuralNetwork::new(genome);
+        network_example.initialize();
+
         // Validate that the graph is built correctly
+        let mut dfs = Dfs::new(&network_example.graph, network_example.node_identity_map["input_1"]);
+
+        let mut traversal_order: Vec<String> = Vec::new();
+
+        while let Some(nx) = dfs.next(&network_example.graph) {
+            traversal_order.push(network_example.graph[nx].id.clone())
+        }
+
+        assert_eq!(vec!["input_1", "N1", "output_1"], traversal_order);
     }
 
     #[test]
@@ -188,5 +202,9 @@ mod tests {
     fn test_fetch_network_output() {
         // Your test code here
         // Test that the fetch_network_output function returns the expected output
+    }
+
+    #[test]
+    fn test_mutate_synapses() {
     }
 }

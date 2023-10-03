@@ -26,6 +26,7 @@ use na::DVector;
 /// // code example here
 #[derive(Debug, Clone)]
 pub struct Nn {
+    pub id: String,
     pub synaptic_weights: DVector<f32>,
     pub neuronal_bias: f32,
     pub inputs: Vec<String>,
@@ -48,6 +49,7 @@ impl From<Arc<NeuronalEneCode<'_>>> for Nn {
         }
 
         Nn {
+            id: ene.neuron_id.clone(),
             inputs: inputs_as_list,
             synaptic_weights: DVector::from_vec(weights_as_list), 
             neuronal_bias: ene.topology.genetic_bias,
