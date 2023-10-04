@@ -7,7 +7,7 @@ use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::Dfs;
 
-/// `FeedForwardNeuralNetwork` is a struct that represents a directed graph
+/// `NeuralNetwork` is a struct that represents a directed graph
 /// based feed-forward neural network, initialized from an `EneCode` genome.
 ///
 /// The struct encapsulates the genome (genetic blueprint), graph-based network,
@@ -22,12 +22,12 @@ use petgraph::visit::Dfs;
 /// # Example Usage
 /// ```rust
 /// # use evo_rl::doctest::GENOME_EXAMPLE;
-/// use evo_rl::graph::FeedForwardNeuralNetwork;
+/// use evo_rl::graph::NeuralNetwork;
 /// use evo_rl::enecode::EneCode;
 ///
 /// // Assume genome is a properly initialized EneCode
 /// # let genome = GENOME_EXAMPLE.clone();
-/// let mut network = FeedForwardNeuralNetwork::new(genome);
+/// let mut network = NeuralNetwork::new(genome);
 /// network.initialize();
 ///
 /// // Assume input is a properly initialized Vec<f32>
@@ -37,18 +37,18 @@ use petgraph::visit::Dfs;
 /// let output = network.fetch_network_output();
 /// ```
 #[derive(Debug, Clone)]
-pub struct FeedForwardNeuralNetwork {
+pub struct NeuralNetwork {
     genome: EneCode,
     graph: DiGraph<Nn, f32>,
     node_identity_map: HashMap<String, NodeIndex>,
     network_output: Vec<f32>,
 }
 
-impl FeedForwardNeuralNetwork {
+impl NeuralNetwork {
 
-    /// Create a new `FeedForwardNeuralNetwork` from an `EneCode` genome.
+    /// Create a new `NeuralNetwork` from an `EneCode` genome.
     pub fn new(genome: EneCode) -> Self {
-        FeedForwardNeuralNetwork {
+        NeuralNetwork {
             genome: genome.clone(),
             graph: DiGraph::new(),
             node_identity_map: HashMap::new(),
@@ -176,8 +176,8 @@ mod tests {
     fn test_initialize() {
         let genome = GENOME_EXAMPLE.clone();
 
-        // Create an EneCode and use it to initialize a FeedForwardNeuralNetwork
-        let mut network_example = FeedForwardNeuralNetwork::new(genome);
+        // Create an EneCode and use it to initialize a NeuralNetwork
+        let mut network_example = NeuralNetwork::new(genome);
         network_example.initialize();
 
         // Validate that the graph is built correctly
@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn test_fwd_fetch_network_output() {
         let genome = GENOME_EXAMPLE.clone();
-        let mut network_example = FeedForwardNeuralNetwork::new(genome);
+        let mut network_example = NeuralNetwork::new(genome);
         network_example.initialize();
 
         network_example.fwd(vec![0.]);
@@ -209,7 +209,7 @@ mod tests {
     #[test]
     fn test_mutate_synapses() {
         let genome = GENOME_EXAMPLE.clone();
-        let mut network_example = FeedForwardNeuralNetwork::new(genome);
+        let mut network_example = NeuralNetwork::new(genome);
         network_example.initialize();
 
         let gt = GENOME_EXAMPLE.clone();

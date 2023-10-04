@@ -1,10 +1,10 @@
-use crate::{graph::FeedForwardNeuralNetwork, enecode::EneCode};
+use crate::{graph::NeuralNetwork, enecode::EneCode};
 
 /// Population is the struct that contains the agents for selection and mediates the evolutionary
 /// algorithm. In this case we will use Stochastic Universal Sampling along with Truncation.
 ///
 struct population {
-    pub agents: Vec<FeedForwardNeuralNetwork>,
+    pub agents: Vec<NeuralNetwork>,
     pub target_population: usize,
     pub generation: usize,
     pub fitness_criterion: f32
@@ -12,7 +12,7 @@ struct population {
 
 impl population {
 
-    fn new(genome_configuration: EneCode, population_size: usize) -> Self {
+    pub fn new(genome_configuration: EneCode, population_size: usize) -> Self {
         population {
             agents: Vec::new(),
             target_population: population_size,
@@ -29,7 +29,7 @@ impl population {
         Vec::new()
     }
 
-    fn reproduce(&self, a1: FeedForwardNeuralNetwork, a2: FeedForwardNeuralNetwork, n_offspring: usize) -> Vec<FeedForwardNeuralNetwork> {
+    fn reproduce(&self, a1: NeuralNetwork, a2: NeuralNetwork, n_offspring: usize) -> Vec<NeuralNetwork> {
         Vec::new()
     }
 

@@ -1,2 +1,2 @@
 # evo_rl
-Evolutionary ANNs for RL
+A library for biomemetic neural networks evolved using an algorithm based on NEAT
