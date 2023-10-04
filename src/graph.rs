@@ -81,8 +81,13 @@ impl NeuralNetwork {
 
     }
 
+    /// Run mutation for this network
+    pub fn mutate(&mut self, mutation_rate: f32) {
+        self.mutate_synapses(mutation_rate);
+    }
+
     /// Mutates connections in the network given the current mutation rate
-    pub fn mutate_synapses(&mut self, epsilon: f32) {
+    fn mutate_synapses(&mut self, epsilon: f32) {
         let mut rng = rand::thread_rng();
 
         //synaptic mutation
@@ -94,6 +99,11 @@ impl NeuralNetwork {
             }
 
         }
+    }
+
+    //transfer ownership
+    pub fn transfer(self) -> Self {
+        self
     }
 
     /// Helper function to identify all input neurons in the network.

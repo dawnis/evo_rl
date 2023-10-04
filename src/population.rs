@@ -6,15 +6,26 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 struct population {
     pub agents: Vec<NeuralNetwork>,
     pub target_population: usize,
+    pub mutation_rate: f32,
     pub generation: usize,
     pub fitness_criterion: f32
 }
 
 impl population {
 
-    pub fn new(genome_configuration: EneCode, population_size: usize) -> Self {
+    pub fn new(genome_base: EneCode, population_size: usize, mutation_rate: f32) -> Self {
+        let mut agent_vector: Vec<NeuralNetwork> = Vec::new();
+
+        for idx in 0..population_size {
+            let mut agent = NeuralNetwork::new(genome_base.clone());
+            agent.initialize();
+            agent.mutate(mutation_rate);
+            agent_vector.push(agent.transfer());
+        }
+
         population {
-            agents: Vec::new(),
+            agents: agent_vector,
+            mutation_rate, 
             target_population: population_size,
             generation: 0,
             fitness_criterion: 0.,
