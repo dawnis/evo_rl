@@ -22,7 +22,7 @@ impl Population {
     pub fn new(genome_base: EneCode, population_size: usize, mutation_rate: f32) -> Self {
         let mut agent_vector: Vec<NeuralNetwork> = Vec::new();
 
-        for idx in 0..population_size {
+        for _idx in 0..population_size {
             let mut agent = NeuralNetwork::new(genome_base.clone());
             agent.initialize();
             agent.mutate(mutation_rate);
@@ -43,7 +43,16 @@ impl Population {
         fitness_vector
     }
 
-    fn sample(&self, n_select: usize) -> Vec<usize> {
+    fn selection(&self, n_select: usize) -> Vec<NeuralNetwork> {
+        let truncated_population = self.truncate_population();
+        self.stochastic_universal_sampling(truncated_population)
+    }
+
+    fn stochastic_universal_sampling(&self, sample: Vec<NeuralNetwork>) -> Vec<NeuralNetwork> {
+        Vec::new()
+    }
+
+    fn truncate_population(&self) -> Vec<NeuralNetwork> {
         Vec::new()
     }
 
