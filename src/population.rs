@@ -14,7 +14,9 @@ struct Population {
     pub target_population: usize,
     pub mutation_rate: f32,
     pub generation: usize,
-    pub fitness_criterion: f32
+    pub fitness_criterion: f32,
+    survival_rate: f32,
+    agent_fitness: Vec<f32>,
 }
 
 impl Population {
@@ -35,12 +37,14 @@ impl Population {
             target_population: population_size,
             generation: 0,
             fitness_criterion: 0.,
+            survival_rate: 0.8,
+            agent_fitness: Vec::new(),
         }
     }
 
-    fn evaluate_fitness<T: FitnessFunction>(&self, f: T) -> Vec<f32> {
+    fn evaluate_fitness<T: FitnessFunction>(&mut self, f: T) {
         let fitness_vector: Vec<f32> = self.agents.iter().map(|x| f.fitness(x)).collect();
-        fitness_vector
+        self.agent_fitness = fitness_vector;
     }
 
     fn selection(&self, n_select: usize) -> Vec<NeuralNetwork> {
@@ -48,12 +52,19 @@ impl Population {
         self.stochastic_universal_sampling(truncated_population)
     }
 
-    fn stochastic_universal_sampling(&self, sample: Vec<NeuralNetwork>) -> Vec<NeuralNetwork> {
+    fn stochastic_universal_sampling(&self, sample: Vec<usize>) -> Vec<NeuralNetwork> {
         Vec::new()
     }
 
-    fn truncate_population(&self) -> Vec<NeuralNetwork> {
-        Vec::new()
+    ///Returns indices associated with truncated population
+    fn truncate_population(&self) -> Vec<usize> {
+        let n_survival = (self.agents.len() as f32) * self.survival_rate;
+        let mut fitness_pairing: Vec<_> = (0..self.agents.len()).zip(&self.agent_fitness).collect();
+        fitness_pairing.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        let sorted_data: Vec<usize> = fitness_pairing.into_iter().map(|(a, _)| a).collect();
+
+        sorted_data[..n_survival.round() as usize].to_vec()
+
     }
 
     fn reproduce(&self, a1: NeuralNetwork, a2: NeuralNetwork, n_offspring: usize) -> Vec<NeuralNetwork> {
@@ -84,17 +95,28 @@ mod tests {
         }
 
         impl FitnessFunction for TestFitnessObject {
-            fn fitness(&self, agent: &NeuralNetwork) -> f32 {
+            fn fitness(&self, _agent: &NeuralNetwork) -> f32 {
                 1.
             }
         }
 
         let genome = GENOME_EXAMPLE.clone();
-        let population_test = Population::new(genome, 125, 0.1);
+        let mut population_test = Population::new(genome, 125, 0.1);
 
-        let population_fitness = population_test.evaluate_fitness(TestFitnessObject {} );
+        population_test.evaluate_fitness(TestFitnessObject {} );
 
-        assert_eq!(population_fitness.iter().sum::<f32>(), 125.);
+        assert_eq!(population_test.agent_fitness.iter().sum::<f32>(), 125.);
+    }
+
+    #[test]
+    fn test_truncate_population() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut population_test = Population::new(genome, 10, 0.1);
+        population_test.agent_fitness = vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
+        
+        let sorted_fitness_indices = population_test.truncate_population();
+
+        assert_eq!(sorted_fitness_indices, vec![9, 8, 7, 6, 5, 4, 3, 2]);
     }
 
     #[test]
