@@ -3,7 +3,13 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 /// Population is the struct that contains the agents for selection and mediates the evolutionary
 /// algorithm. In this case we will use Stochastic Universal Sampling along with Truncation.
 ///
-struct population {
+///
+
+trait FitnessFunction {
+    fn fitness(&self, agent: &NeuralNetwork) -> f32;
+}
+
+struct Population {
     pub agents: Vec<NeuralNetwork>,
     pub target_population: usize,
     pub mutation_rate: f32,
@@ -11,7 +17,7 @@ struct population {
     pub fitness_criterion: f32
 }
 
-impl population {
+impl Population {
 
     pub fn new(genome_base: EneCode, population_size: usize, mutation_rate: f32) -> Self {
         let mut agent_vector: Vec<NeuralNetwork> = Vec::new();
@@ -23,7 +29,7 @@ impl population {
             agent_vector.push(agent.transfer());
         }
 
-        population {
+        Population {
             agents: agent_vector,
             mutation_rate, 
             target_population: population_size,
@@ -32,8 +38,9 @@ impl population {
         }
     }
 
-    fn evaluate_fitness(&self) -> Vec<f32> {
-        Vec::new()
+    fn evaluate_fitness<T: FitnessFunction>(&self, f: T) -> Vec<f32> {
+        let fitness_vector: Vec<f32> = self.agents.iter().map(|x| f.fitness(x)).collect();
+        fitness_vector
     }
 
     fn sample(&self, n_select: usize) -> Vec<usize> {
@@ -52,13 +59,33 @@ impl population {
 
 mod tests {
     use super::*;
+    use crate::doctest::GENOME_EXAMPLE;
 
     #[test]
     fn test_create_population() {
+        let genome = GENOME_EXAMPLE.clone();
+        let population_test = Population::new(genome, 125, 0.1);
+        assert_eq!(population_test.agents.len(), 125);
     }
 
     #[test]
     fn test_evaluate_fitness() {
+
+        struct TestFitnessObject {
+        }
+
+        impl FitnessFunction for TestFitnessObject {
+            fn fitness(&self, agent: &NeuralNetwork) -> f32 {
+                1.
+            }
+        }
+
+        let genome = GENOME_EXAMPLE.clone();
+        let population_test = Population::new(genome, 125, 0.1);
+
+        let population_fitness = population_test.evaluate_fitness(TestFitnessObject {} );
+
+        assert_eq!(population_fitness.iter().sum::<f32>(), 125.);
     }
 
     #[test]
