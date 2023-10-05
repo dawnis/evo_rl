@@ -1,3 +1,6 @@
+use rand::prelude::*;
+use rand::distributions::{Distribution, Uniform};
+
 use crate::{graph::NeuralNetwork, enecode::EneCode};
 
 /// Population is the struct that contains the agents for selection and mediates the evolutionary
@@ -47,13 +50,35 @@ impl Population {
         self.agent_fitness = fitness_vector;
     }
 
-    fn selection(&self, n_select: usize) -> Vec<NeuralNetwork> {
+    fn selection(&self, n_select: usize) -> Vec<usize> {
         let truncated_population = self.truncate_population();
-        self.stochastic_universal_sampling(truncated_population)
+        self.stochastic_universal_sampling(truncated_population, n_select)
     }
 
-    fn stochastic_universal_sampling(&self, sample: Vec<usize>) -> Vec<NeuralNetwork> {
-        Vec::new()
+    /// Implements stochastic universal sampling, an efficient algorithm related to Roulette Wheel
+    /// Selection for evolutionary aglorithms
+    fn stochastic_universal_sampling(&self, sample: Vec<usize>, n_select: usize) -> Vec<usize> {
+        let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agent_fitness[idx]).collect();
+        let total_population_fitness: f32 = sample_fitness.iter().sum();
+        let point_spacing = total_population_fitness / (n_select as f32);
+        let mut rng = rand::thread_rng();
+        let u = Uniform::from(0_f32..point_spacing);
+
+        let mut selection: Vec<usize>  = Vec::new();
+
+        //start the roulette pointer at a point between 0 and the first spacing
+        let mut roulette_pointer = u.sample(&mut rng); 
+
+        for _p in 0..n_select {
+            let mut idx: usize = 0;
+            while sample_fitness[0..idx].iter().sum::<f32>() < roulette_pointer {
+                idx += 1;
+            }
+            selection.push(sample[idx-1]);
+            roulette_pointer += point_spacing;
+        }
+
+        selection
     }
 
     ///Returns indices associated with truncated population
@@ -120,7 +145,14 @@ mod tests {
     }
 
     #[test]
-    fn test_sample_population() {
+    fn test_stochastic_universal_sampling() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut population_test = Population::new(genome, 3, 0.1);
+        population_test.agent_fitness = vec![5., 3., 2.];
+        let sample: Vec<usize> = vec![0, 1, 2];
+
+        let sus: Vec<usize> = population_test.stochastic_universal_sampling(sample, 10);
+        assert_eq!(vec![0, 0, 0, 0, 0, 1, 1, 1, 2, 2], sus);
     }
 
 
