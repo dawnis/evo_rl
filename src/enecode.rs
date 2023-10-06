@@ -1,4 +1,7 @@
+use rand::Rng;
+use rand::seq::IteratorRandom;
 use std::collections::HashMap;
+
 /// `EneCode` encapsulates the genetic blueprint for constructing an entire neural network.
 ///
 /// This struct holds all the information required to instantiate a neural network with
@@ -79,6 +82,67 @@ impl EneCode {
 
         gene
     }
+
+    pub fn recombine(&self, other_genome: &EneCode) -> EneCode {
+        // first, determine number of crossover points
+        let mut rng = rand::thread_rng();
+        let max_crossover_points = self.neuron_id.len() / 2;
+        let n_crossover = rng.gen_range(1..max_crossover_points);
+
+        // second determine location of each crossover point
+        let mut crossover_points: Vec<usize> = (0..self.neuron_id.len()).choose_multiple(&mut rng, n_crossover);
+        crossover_points.sort();
+
+        let mut recombined_offspring_topology: Vec<TopologyGene> = Vec::new();
+
+        // for each crossover, swap at the matching innovation number
+
+        //Clone each genome and reverse it for popping
+        let mut own_copy: Vec<TopologyGene> = self.topology.clone();
+        own_copy.reverse();
+
+        let mut others_copy: Vec<TopologyGene> = other_genome.topology.clone();
+        others_copy.reverse();
+
+        let use_self = true;
+
+        for point in crossover_points {
+            let innovation_number = &self.neuron_id[point];
+
+            let mut self_genes: Vec<TopologyGene> = Vec::new();
+            while let Some(sg) = own_copy.pop() {
+                if sg.innovation_number == *innovation_number {
+                    break;
+                }
+                self_genes.push(sg);
+            }
+
+            let mut other_genes: Vec<TopologyGene> = Vec::new();
+            while let Some(og) = others_copy.pop() {
+                if og.innovation_number == *innovation_number {
+                    break;
+                }
+                other_genes.push(og);
+            }
+
+            if use_self {
+                recombined_offspring_topology.extend(self_genes.drain(..));
+            } else {
+                recombined_offspring_topology.extend(others_copy.drain(..));
+            }
+
+        }
+
+
+        EneCode {
+            neuron_id: recombined_offspring_topology.iter().map(|tg| String::from(&tg.innovation_number)).collect(),
+            topology: recombined_offspring_topology,
+            neuronal_props: self.neuronal_props.clone(),
+            meta_learning: self.meta_learning.clone(),
+        }
+    }
+
+
 }
 
 /// `NeuronalEneCode` is a struct that encapsulates all genetic information for a single neuron.
@@ -216,6 +280,16 @@ mod tests {
     fn test_topology_gene() {
         let topology_gene_n1 = GENOME_EXAMPLE.topology_gene(&String::from("N1"));
         assert_eq!(String::from("N1"), topology_gene_n1.innovation_number);
+    }
+
+    #[test]
+    fn test_recombine() {
+        let ene1 = GENOME_EXAMPLE.clone();
+        let ene2 = GENOME_EXAMPLE.clone();
+
+        let recombined = ene1.recombine(&ene2);
+
+        assert_eq!(recombined.neuron_id.len(), ene1.neuron_id.len());
     }
 }
 

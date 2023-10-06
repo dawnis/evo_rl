@@ -81,6 +81,12 @@ impl NeuralNetwork {
 
     }
 
+    /// Cross over recombination of genetic code
+    pub fn recombine_enecode(&self, partner: &NeuralNetwork) -> NeuralNetwork {
+        let offspring_enecode: EneCode = self.genome.recombine(&partner.genome);
+        NeuralNetwork::new(offspring_enecode)
+    }
+    
     /// Run mutation for this network
     pub fn mutate(&mut self, mutation_rate: f32) {
         self.mutate_synapses(mutation_rate);
@@ -129,7 +135,7 @@ impl NeuralNetwork {
             self.graph[node].propagate(input[i]);
         }
 
-        // Create a Dfs iterator starting from node `i01`
+        // Create a Dfs iterator starting from first input node
         let init_node = input_nodes[0]; 
         let mut dfs = Dfs::new(&self.graph, init_node);
 

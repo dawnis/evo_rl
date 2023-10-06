@@ -1,4 +1,4 @@
-use rand::prelude::*;
+use rand::Rng;
 use rand::distributions::{Distribution, Uniform};
 
 use crate::{graph::NeuralNetwork, enecode::EneCode};
@@ -14,7 +14,7 @@ trait FitnessFunction {
 
 struct Population {
     pub agents: Vec<NeuralNetwork>,
-    pub target_population: usize,
+    pub size: usize,
     pub mutation_rate: f32,
     pub generation: usize,
     pub fitness_criterion: f32,
@@ -37,7 +37,7 @@ impl Population {
         Population {
             agents: agent_vector,
             mutation_rate, 
-            target_population: population_size,
+            size: population_size,
             generation: 0,
             fitness_criterion: 0.,
             survival_rate: 0.8,
@@ -92,8 +92,23 @@ impl Population {
 
     }
 
-    fn reproduce(&self, a1: NeuralNetwork, a2: NeuralNetwork, n_offspring: usize) -> Vec<NeuralNetwork> {
-        Vec::new()
+    fn generate_offspring(&self, parental_ids: Vec<usize>) -> Vec<NeuralNetwork> {
+        let mut offspring: Vec<NeuralNetwork> = Vec::new();
+
+        // Given selected parents, mate in pairs until the population size is fulfilled
+        let num_parents = parental_ids.len();
+        let mut rng = rand::thread_rng();
+        for _idx in 0..self.size {
+            let a1 = rng.gen_range(0..num_parents);
+            let partner_list: Vec<&usize> = parental_ids.iter().filter(|&&p| p != a1).collect();
+
+            let a2 = rng.gen_range(0..partner_list.len());
+            let parent_1 = parental_ids[a1];
+            let parent_2 = *partner_list[a2];
+            offspring.push( self.agents[parent_1].recombine_enecode(&self.agents[parent_2] ) );
+        }
+
+        offspring
     }
 
     fn run_generation(&mut self) ->  bool {
