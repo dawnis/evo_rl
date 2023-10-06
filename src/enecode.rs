@@ -87,11 +87,13 @@ impl EneCode {
         // first, determine number of crossover points
         let mut rng = rand::thread_rng();
         let max_crossover_points = self.neuron_id.len() / 2;
-        let n_crossover = rng.gen_range(1..max_crossover_points);
+
+        let n_crossover = if max_crossover_points < 2 { 1 } else {rng.gen_range(1..max_crossover_points) };
 
         // second determine location of each crossover point
         let mut crossover_points: Vec<usize> = (0..self.neuron_id.len()).choose_multiple(&mut rng, n_crossover);
         crossover_points.sort();
+        println!("Crossover points {:#?}", crossover_points);
 
         let mut recombined_offspring_topology: Vec<TopologyGene> = Vec::new();
 
@@ -112,6 +114,7 @@ impl EneCode {
             let mut self_genes: Vec<TopologyGene> = Vec::new();
             while let Some(sg) = own_copy.pop() {
                 if sg.innovation_number == *innovation_number {
+                    self_genes.push(sg);
                     break;
                 }
                 self_genes.push(sg);
@@ -120,6 +123,7 @@ impl EneCode {
             let mut other_genes: Vec<TopologyGene> = Vec::new();
             while let Some(og) = others_copy.pop() {
                 if og.innovation_number == *innovation_number {
+                    other_genes.push(og);
                     break;
                 }
                 other_genes.push(og);
@@ -131,6 +135,13 @@ impl EneCode {
                 recombined_offspring_topology.extend(others_copy.drain(..));
             }
 
+        }
+
+        //Add any remaining genes left over from the last recombination point onwards
+        if use_self {
+            recombined_offspring_topology.extend(own_copy.drain(..));
+        } else {
+            recombined_offspring_topology.extend(others_copy.drain(..));
         }
 
 
