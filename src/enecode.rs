@@ -83,15 +83,14 @@ impl EneCode {
         gene
     }
 
-    pub fn recombine(&self, other_genome: &EneCode) -> EneCode {
+    pub fn recombine<R: Rng>(&self, rng: &mut R, other_genome: &EneCode) -> EneCode {
         // first, determine number of crossover points
-        let mut rng = rand::thread_rng();
         let max_crossover_points = self.neuron_id.len() / 2;
 
-        let n_crossover = if max_crossover_points < 2 { 1 } else {rng.gen_range(1..max_crossover_points) };
+        let n_crossover = if max_crossover_points < 2 { 1 } else {rng.gen_range(1..=max_crossover_points) };
 
         // second determine location of each crossover point
-        let mut crossover_points: Vec<usize> = (0..self.neuron_id.len()).choose_multiple(&mut rng, n_crossover);
+        let mut crossover_points: Vec<usize> = (0..self.neuron_id.len() - 1).choose_multiple(rng, n_crossover);
         crossover_points.sort();
         println!("Crossover points {:#?}", crossover_points);
 
@@ -106,7 +105,7 @@ impl EneCode {
         let mut others_copy: Vec<TopologyGene> = other_genome.topology.clone();
         others_copy.reverse();
 
-        let use_self = true;
+        let mut use_self = true;
 
         for point in crossover_points {
             let innovation_number = &self.neuron_id[point];
@@ -132,8 +131,10 @@ impl EneCode {
             if use_self {
                 recombined_offspring_topology.extend(self_genes.drain(..));
             } else {
-                recombined_offspring_topology.extend(others_copy.drain(..));
+                recombined_offspring_topology.extend(other_genes.drain(..));
             }
+
+            use_self = !use_self;
 
         }
 
@@ -259,7 +260,9 @@ pub struct MetaLearningGene {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::doctest::GENOME_EXAMPLE;
+    use rand::SeedableRng;
+    use rand::rngs::StdRng;
+    use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE};
 
     #[test]
     fn test_new_from_enecode() {
@@ -294,13 +297,70 @@ mod tests {
     }
 
     #[test]
-    fn test_recombine() {
+    fn test_recombine_same_everything_short_genome() {
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
         let ene1 = GENOME_EXAMPLE.clone();
         let ene2 = GENOME_EXAMPLE.clone();
 
-        let recombined = ene1.recombine(&ene2);
+        let recombined = ene1.recombine(&mut rng, &ene2);
 
         assert_eq!(recombined.neuron_id.len(), ene1.neuron_id.len());
     }
+
+    #[test]
+    fn test_recombine_same_everything_long_genome() {
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        let ene1 = XOR_GENOME.clone();
+        let ene2 = XOR_GENOME.clone();
+
+        let recombined = ene1.recombine(&mut rng, &ene2);
+
+        assert_eq!(recombined.neuron_id.len(), ene1.neuron_id.len());
+    }
+
+    #[test]
+    fn test_recombine_same_topology_different_genetic_bias() {
+        let seed = [17; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        let ene1 = XOR_GENOME.clone();
+        let ene2_base = XOR_GENOME.clone();
+
+        let new_topology_genome: Vec<TopologyGene> = ene2_base.topology.iter().map( |tg| 
+                TopologyGene {
+                    innovation_number: String::from(&tg.innovation_number),
+                    pin: tg.pin.clone(),
+                    inputs: tg.inputs.clone(),
+                    outputs: tg.outputs.clone(),
+                    genetic_bias: 5.,
+                    active: tg.active
+                }
+            ).collect();
+
+        let ene2 = EneCode {
+            neuron_id: new_topology_genome.iter().map(|tg| String::from(&tg.innovation_number)).collect(),
+            topology: new_topology_genome,
+            neuronal_props: ene2_base.neuronal_props,
+            meta_learning: ene2_base.meta_learning,
+        };
+
+        let recombined = ene1.recombine(&mut rng, &ene2);
+        let recombined_genetic_bias: Vec<_> = recombined.topology.iter().map(|tg| tg.genetic_bias).collect();
+
+        println!("Recombined bias vector {:#?}", recombined_genetic_bias);
+        assert_ne!(recombined_genetic_bias, vec![0., 0., 0., 0.]);
+        assert_ne!(recombined_genetic_bias, vec![5., 5., 5., 5.]);
+        assert_eq!(recombined_genetic_bias.len(), ene1.neuron_id.len());
+
+    }
+
+    #[test]
+    fn test_recombine_different_topology_compatible_genomes() {
+    }
+
 }
 
