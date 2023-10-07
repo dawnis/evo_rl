@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::Dfs;
+use thiserror::Error;
 
 /// `NeuralNetwork` is a struct that represents a directed graph
 /// based feed-forward neural network, initialized from an `EneCode` genome.
@@ -82,12 +83,13 @@ impl NeuralNetwork {
     }
 
     /// Cross over recombination of genetic code
-    pub fn recombine_enecode(&self, partner: &NeuralNetwork) -> NeuralNetwork {
-        let mut rng = rand::thread_rng();
-        let offspring_enecode = self.genome.recombine(&mut rng, &partner.genome);
-        match offspring_enecode {
-            Ok(enecode) => NeuralNetwork::new(enecode),
-            Err(e) => panic!("Recombination error: {:#?}", e)
+    pub fn recombine_enecode<R: Rng>(&self, rng: &mut R, partner: &NeuralNetwork) -> Result<NeuralNetwork, GraphConstructionError> {
+        if let Ok(offspring_enecode) = self.genome.recombine(rng, &partner.genome) {
+            let mut offspring_nn = NeuralNetwork::new(offspring_enecode);
+            offspring_nn.initialize();
+            Ok(offspring_nn.transfer())
+        } else {
+            Err(GraphConstructionError::EnecodeRecombinationError)
         }
     }
     
@@ -187,10 +189,16 @@ impl NeuralNetwork {
 
 }
 
+#[derive(Debug, Error)]
+pub enum GraphConstructionError {
+    #[error("Enecode level error during recombination.")]
+    EnecodeRecombinationError
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::doctest::GENOME_EXAMPLE;
+    use crate::doctest::{GENOME_EXAMPLE, GENOME_EXAMPLE2};
 
     #[test]
     fn test_initialize() {
@@ -249,5 +257,24 @@ mod tests {
 
         assert_ne!(synaptic_value, weight_before_mut);
 
+    }
+
+    #[test]
+    fn test_recombine_enecode() {
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        let ene1 = GENOME_EXAMPLE.clone();
+        let mut network1 = NeuralNetwork::new(ene1);
+        network1.initialize();
+
+        let ene2 = GENOME_EXAMPLE2.clone();
+        let mut network2 = NeuralNetwork::new(ene2);
+        network2.initialize();
+
+        let recombined = network1.recombine_enecode(&mut rng, &network2).unwrap();
+        let recombined_nodes: Vec<_> = recombined.node_identity_map.keys().map(|k| String::from(k)).collect();
+
+        assert!(recombined_nodes.len() == 4);
     }
 }

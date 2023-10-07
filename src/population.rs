@@ -105,7 +105,13 @@ impl Population {
             let a2 = rng.gen_range(0..partner_list.len());
             let parent_1 = parental_ids[a1];
             let parent_2 = *partner_list[a2];
-            offspring.push( self.agents[parent_1].recombine_enecode(&self.agents[parent_2] ) );
+
+            let offspring_nn = self.agents[parent_1].recombine_enecode(&mut rng, &self.agents[parent_2] );
+
+            match offspring_nn {
+                Ok(nn) => offspring.push(nn),
+                Err(e) => println!("Recombination failed: {:#?}", e),
+            }
         }
 
         offspring
