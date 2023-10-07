@@ -84,8 +84,11 @@ impl NeuralNetwork {
     /// Cross over recombination of genetic code
     pub fn recombine_enecode(&self, partner: &NeuralNetwork) -> NeuralNetwork {
         let mut rng = rand::thread_rng();
-        let offspring_enecode: EneCode = self.genome.recombine(&mut rng, &partner.genome);
-        NeuralNetwork::new(offspring_enecode)
+        let offspring_enecode = self.genome.recombine(&mut rng, &partner.genome);
+        match offspring_enecode {
+            Ok(enecode) => NeuralNetwork::new(enecode),
+            Err(e) => panic!("Recombination error: {:#?}", e)
+        }
     }
     
     /// Run mutation for this network

@@ -1,6 +1,7 @@
 use rand::Rng;
 use rand::seq::IteratorRandom;
 use std::collections::HashMap;
+use thiserror::Error;
 
 /// `EneCode` encapsulates the genetic blueprint for constructing an entire neural network.
 ///
@@ -83,7 +84,7 @@ impl EneCode {
         gene
     }
 
-    pub fn recombine<R: Rng>(&self, rng: &mut R, other_genome: &EneCode) -> EneCode {
+    pub fn recombine<R: Rng>(&self, rng: &mut R, other_genome: &EneCode) -> Result<EneCode, RecombinationError> {
         // first, determine number of crossover points
         let max_crossover_points = self.neuron_id.len() / 2;
 
@@ -92,7 +93,7 @@ impl EneCode {
         // second determine location of each crossover point
         let mut crossover_points: Vec<usize> = (0..self.neuron_id.len() - 1).choose_multiple(rng, n_crossover);
         crossover_points.sort();
-        println!("Crossover points {:#?}", crossover_points);
+        //println!("Crossover points {:#?}", crossover_points);
 
         let mut recombined_offspring_topology: Vec<TopologyGene> = Vec::new();
 
@@ -128,6 +129,11 @@ impl EneCode {
                 other_genes.push(og);
             }
 
+            //If innovation number isn't found then there is no corresponding crossover point
+            if others_copy.is_empty() {
+                return Err(RecombinationError::CrossoverMatchError);
+            }
+
             if use_self {
                 recombined_offspring_topology.extend(self_genes.drain(..));
             } else {
@@ -146,12 +152,12 @@ impl EneCode {
         }
 
 
-        EneCode {
+        Ok(EneCode {
             neuron_id: recombined_offspring_topology.iter().map(|tg| String::from(&tg.innovation_number)).collect(),
             topology: recombined_offspring_topology,
             neuronal_props: self.neuronal_props.clone(),
             meta_learning: self.meta_learning.clone(),
-        }
+        })
     }
 
 
@@ -209,6 +215,13 @@ pub enum NeuronType {
     Hidden,
 }
 
+#[derive(Debug, Error)]
+pub enum RecombinationError {
+    #[error("Incompatible Genomes: Non-matching innovation number chosen for crossover!")]
+    CrossoverMatchError
+}
+
+
 /// Gene that defines the topology of a neuron.
 ///
 /// # Fields
@@ -262,7 +275,8 @@ mod tests {
     use super::*;
     use rand::SeedableRng;
     use rand::rngs::StdRng;
-    use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE};
+    use assert_matches::assert_matches;
+    use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2};
 
     #[test]
     fn test_new_from_enecode() {
@@ -304,7 +318,7 @@ mod tests {
         let ene1 = GENOME_EXAMPLE.clone();
         let ene2 = GENOME_EXAMPLE.clone();
 
-        let recombined = ene1.recombine(&mut rng, &ene2);
+        let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
 
         assert_eq!(recombined.neuron_id.len(), ene1.neuron_id.len());
     }
@@ -317,7 +331,7 @@ mod tests {
         let ene1 = XOR_GENOME.clone();
         let ene2 = XOR_GENOME.clone();
 
-        let recombined = ene1.recombine(&mut rng, &ene2);
+        let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
 
         assert_eq!(recombined.neuron_id.len(), ene1.neuron_id.len());
     }
@@ -348,7 +362,7 @@ mod tests {
             meta_learning: ene2_base.meta_learning,
         };
 
-        let recombined = ene1.recombine(&mut rng, &ene2);
+        let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
         let recombined_genetic_bias: Vec<_> = recombined.topology.iter().map(|tg| tg.genetic_bias).collect();
 
         println!("Recombined bias vector {:#?}", recombined_genetic_bias);
@@ -360,7 +374,29 @@ mod tests {
 
     #[test]
     fn test_recombine_different_topology_compatible_genomes() {
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        let ene1 = GENOME_EXAMPLE.clone();
+        let ene2 = GENOME_EXAMPLE2.clone();
+
+        let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
+
+        assert!(recombined.neuron_id.len() == 4);
     }
 
+
+    #[test]
+    fn test_recombine_incompatible_genomes() {
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        let ene1 = GENOME_EXAMPLE.clone();
+        let ene2 = XOR_GENOME.clone();
+
+        let recombined = ene1.recombine(&mut rng, &ene2);
+
+        assert_matches!(recombined, Err(RecombinationError::CrossoverMatchError));
+    }
 }
 
