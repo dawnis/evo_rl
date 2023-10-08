@@ -41,7 +41,6 @@ use thiserror::Error;
 ///             innovation_number: "N1".to_string(),
 ///             pin: NeuronType::In,
 ///             inputs: HashMap::new(),
-///             outputs: vec!["N2".to_string()],
 ///             genetic_bias: 0.1,
 ///             active: true
 ///         },
@@ -237,7 +236,6 @@ pub struct TopologyGene {
     pub innovation_number: String,
     pub pin: NeuronType, //stolen from python-neat for outside connections
     pub inputs: HashMap<String, f32>, //map that defines genetic weight of synapse for each parent
-    pub outputs: Vec<String>,
     pub genetic_bias: f32,
     pub active: bool,
 }
@@ -293,7 +291,6 @@ mod tests {
                  innovation_number: "N1".to_string(),
                  pin: NeuronType::Hidden,
                  inputs: input_map,
-                 outputs: vec!["output_1".to_string()],
                  genetic_bias: 0.0,
                  active: true }, 
         properties: &GENOME_EXAMPLE.neuronal_props,
@@ -349,7 +346,6 @@ mod tests {
                     innovation_number: String::from(&tg.innovation_number),
                     pin: tg.pin.clone(),
                     inputs: tg.inputs.clone(),
-                    outputs: tg.outputs.clone(),
                     genetic_bias: 5.,
                     active: tg.active
                 }

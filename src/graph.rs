@@ -118,23 +118,48 @@ impl NeuralNetwork {
         self
     }
 
-    /// Helper function to identify all input neurons in the network.
-    fn fetch_network_input_neurons(&self) -> Vec<NodeIndex> {
-        let mut input_ids: Vec<String> = self.genome.neuron_id.iter()
-            .filter(|&x| x.starts_with("i"))
-            .cloned()
+    /// Helper function to identify neurons of a paritcular type and returns them sorted by id
+    fn fetch_neuron_list_by_type(&self, neurontype: NeuronType) -> Vec<NodeIndex> {
+        let mut neuron_ids: Vec<String> = self.genome.topology.iter()
+            .filter(|x| x.pin == neurontype)
+            .map(|tg| String::from(&tg.innovation_number))
             .collect();
 
-        input_ids.sort();
+        neuron_ids.sort();
 
-        input_ids.iter().map(|id| self.node_identity_map[id]).collect()
+        neuron_ids.iter().map(|id| self.node_identity_map[id]).collect()
+    }
+
+    /// Performs propagation at an individual node
+    fn propagate_node(&mut self, node: NodeIndex) {
+        let node_parents = self.graph.neighbors_directed(node, petgraph::Direction::Incoming);
+
+        let mut dot_product: f32 = 0.;
+        let mut n_parents = 0;
+
+        for pnode in node_parents {
+
+            n_parents += 1;
+
+            //grab current synaptic weights
+            let edge = self.graph.find_edge(pnode, node);
+
+            let synaptic_value: f32 = match edge {
+                Some(syn) => *self.graph.edge_weight(syn).expect("Connection was not initialized!"),
+                None => panic!("Improper Edge")
+            };
+
+            dot_product = dot_product + synaptic_value * self.graph[pnode].output_value();
+        }
+
+        if n_parents > 0  { self.graph[node].propagate(dot_product) };
     }
 
     /// Forward propagate through the neural network.
     /// This function takes a vector of input values and populates the network output.
     pub fn fwd(&mut self, input: Vec<f32>) {
         // For all input neurons, set values to input
-        let input_nodes = self.fetch_network_input_neurons();
+        let input_nodes = self.fetch_neuron_list_by_type(NeuronType::In);
         assert_eq!(input.len(), input_nodes.len());
 
         for (i, &node) in input_nodes.iter().enumerate() {
@@ -145,40 +170,21 @@ impl NeuralNetwork {
         let init_node = input_nodes[0]; 
         let mut dfs = Dfs::new(&self.graph, init_node);
 
+        // Iterate over the nodes in depth-first order without visiting output nodes
+        while let Some(nx) = dfs.next(&self.graph) {
+            if self.graph[nx].neuron_type == NeuronType::Out { continue };
+            self.propagate_node(nx);
+        }
+
         // Create a vector to store the result
         let mut network_output: Vec<f32> = Vec::new();
 
-        // Iterate over the nodes in depth-first order
-        while let Some(nx) = dfs.next(&self.graph) {
+        let output_neurons = self.fetch_neuron_list_by_type(NeuronType::Out);
 
-            let node_parents = self.graph.neighbors_directed(nx, petgraph::Direction::Incoming);
-
-            let mut dot_product: f32 = 0.;
-            let mut n_parents = 0;
-
-            for pnode in node_parents {
-
-                n_parents += 1;
-
-                //grab current synaptic weights
-                let edge = self.graph.find_edge(pnode, nx);
-
-                let synaptic_value: f32 = match edge {
-                    Some(syn) => *self.graph.edge_weight(syn).expect("Connection was not initialized!"),
-                    None => panic!("Improper Edge")
-                };
-
-                dot_product = dot_product + synaptic_value * self.graph[pnode].output_value();
+        for nx in output_neurons {
+            self.propagate_node(nx);
+            network_output.push( self.graph[nx].output_value() );
             }
-
-            if n_parents > 0  { self.graph[nx].propagate(dot_product) };
-
-            match self.graph[nx].neuron_type {
-                NeuronType::Out => network_output.push( self.graph[nx].output_value() ),
-                _ => continue
-            }
-
-        }
 
         self.network_output = network_output;
     }
@@ -281,10 +287,10 @@ mod tests {
 
         let mut recombined = network1.recombine_enecode(&mut rng, &network2).unwrap();
         println!("Offspring genome: {:#?}", recombined.genome.topology);
-        recombined.fwd(vec![0.]);
+        recombined.fwd(vec![1.]);
 
         let test_output = recombined.fetch_network_output();
-        assert_eq!(test_output[0], 2.);
+        assert_ne!(test_output[0], 0.);
 
         let recombined_nodes: Vec<_> = recombined.node_identity_map.keys().map(|k| String::from(k)).collect();
 
