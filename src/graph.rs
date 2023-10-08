@@ -154,9 +154,11 @@ impl NeuralNetwork {
             let node_parents = self.graph.neighbors_directed(nx, petgraph::Direction::Incoming);
 
             let mut dot_product: f32 = 0.;
+            let mut n_parents = 0;
 
             for pnode in node_parents {
 
+                n_parents += 1;
 
                 //grab current synaptic weights
                 let edge = self.graph.find_edge(pnode, nx);
@@ -169,7 +171,7 @@ impl NeuralNetwork {
                 dot_product = dot_product + synaptic_value * self.graph[pnode].output_value();
             }
 
-            self.graph[nx].propagate(dot_product);
+            if n_parents > 0  { self.graph[nx].propagate(dot_product) };
 
             match self.graph[nx].neuron_type {
                 NeuronType::Out => network_output.push( self.graph[nx].output_value() ),
@@ -230,8 +232,13 @@ mod tests {
         // Test the forward pass and verify that the network_output is as expected
         
         let network_out = network_example.fetch_network_output();
-
         assert_eq!(network_out[0],  0.);
+
+        network_example.fwd(vec![2.]);
+
+
+        let network_out = network_example.fetch_network_output();
+        assert!(network_out[0] > 0.);
     }
 
     #[test]
@@ -272,7 +279,13 @@ mod tests {
         let mut network2 = NeuralNetwork::new(ene2);
         network2.initialize();
 
-        let recombined = network1.recombine_enecode(&mut rng, &network2).unwrap();
+        let mut recombined = network1.recombine_enecode(&mut rng, &network2).unwrap();
+        println!("Offspring genome: {:#?}", recombined.genome.topology);
+        recombined.fwd(vec![0.]);
+
+        let test_output = recombined.fetch_network_output();
+        assert_eq!(test_output[0], 2.);
+
         let recombined_nodes: Vec<_> = recombined.node_identity_map.keys().map(|k| String::from(k)).collect();
 
         assert!(recombined_nodes.len() == 4);

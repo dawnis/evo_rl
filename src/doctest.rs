@@ -50,7 +50,7 @@ lazy_static! {
          innovation_number: "NP01".to_string(),
          tau: 0.9,
          homeostatic_force: 0.1,
-         tanh_alpha: 2.0,
+         tanh_alpha: 1.,
      },
      meta_learning: MetaLearningGene {
          innovation_number: "MTL01".to_string(),
@@ -109,7 +109,7 @@ lazy_static! {
          innovation_number: "NP01".to_string(),
          tau: 0.9,
          homeostatic_force: 0.1,
-         tanh_alpha: 2.0,
+         tanh_alpha: 1.,
      },
      meta_learning: MetaLearningGene {
          innovation_number: "MTL01".to_string(),
