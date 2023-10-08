@@ -1,4 +1,4 @@
-use evo_rl::{graph::FeedForwardNeuralNetwork, enecode::EneCode};
+use evo_rl::{graph::NeuralNetwork, enecode::EneCode};
 use evo_rl::doctest::XOR_GENOME;
 
 extern crate rand;
@@ -16,7 +16,7 @@ fn main() {
     let sample: Vec<bool> = (0..2).into_iter().map(|_| bernoulli.sample(&mut rand::thread_rng())).collect();
 
     let xor_genome: EneCode = XOR_GENOME.clone();
-    let mut fnn = FeedForwardNeuralNetwork::new(xor_genome);
+    let mut fnn = NeuralNetwork::new(xor_genome);
 
     fnn.initialize(); 
 

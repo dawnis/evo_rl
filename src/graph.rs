@@ -1,11 +1,14 @@
 use crate::neuron::Nn;
 use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
+use rand::prelude::*;
+use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::Dfs;
+use thiserror::Error;
 
-/// `FeedForwardNeuralNetwork` is a struct that represents a directed graph
+/// `NeuralNetwork` is a struct that represents a directed graph
 /// based feed-forward neural network, initialized from an `EneCode` genome.
 ///
 /// The struct encapsulates the genome (genetic blueprint), graph-based network,
@@ -20,12 +23,12 @@ use petgraph::visit::Dfs;
 /// # Example Usage
 /// ```rust
 /// # use evo_rl::doctest::GENOME_EXAMPLE;
-/// use evo_rl::graph::FeedForwardNeuralNetwork;
+/// use evo_rl::graph::NeuralNetwork;
 /// use evo_rl::enecode::EneCode;
 ///
 /// // Assume genome is a properly initialized EneCode
 /// # let genome = GENOME_EXAMPLE.clone();
-/// let mut network = FeedForwardNeuralNetwork::new(genome);
+/// let mut network = NeuralNetwork::new(genome);
 /// network.initialize();
 ///
 /// // Assume input is a properly initialized Vec<f32>
@@ -35,18 +38,18 @@ use petgraph::visit::Dfs;
 /// let output = network.fetch_network_output();
 /// ```
 #[derive(Debug, Clone)]
-pub struct FeedForwardNeuralNetwork {
+pub struct NeuralNetwork {
     genome: EneCode,
     graph: DiGraph<Nn, f32>,
     node_identity_map: HashMap<String, NodeIndex>,
     network_output: Vec<f32>,
 }
 
-impl FeedForwardNeuralNetwork {
+impl NeuralNetwork {
 
-    /// Create a new `FeedForwardNeuralNetwork` from an `EneCode` genome.
+    /// Create a new `NeuralNetwork` from an `EneCode` genome.
     pub fn new(genome: EneCode) -> Self {
-        FeedForwardNeuralNetwork {
+        NeuralNetwork {
             genome: genome.clone(),
             graph: DiGraph::new(),
             node_identity_map: HashMap::new(),
@@ -79,65 +82,109 @@ impl FeedForwardNeuralNetwork {
 
     }
 
-    /// Helper function to identify all input neurons in the network.
-    fn fetch_network_input_neurons(&self) -> Vec<NodeIndex> {
-        let mut input_ids: Vec<String> = self.genome.neuron_id.iter()
-            .filter(|&x| x.starts_with("i"))
-            .cloned()
+    /// Cross over recombination of genetic code
+    pub fn recombine_enecode<R: Rng>(&self, rng: &mut R, partner: &NeuralNetwork) -> Result<NeuralNetwork, GraphConstructionError> {
+        if let Ok(offspring_enecode) = self.genome.recombine(rng, &partner.genome) {
+            let mut offspring_nn = NeuralNetwork::new(offspring_enecode);
+            offspring_nn.initialize();
+            Ok(offspring_nn.transfer())
+        } else {
+            Err(GraphConstructionError::EnecodeRecombinationError)
+        }
+    }
+    
+    /// Run mutation for this network
+    pub fn mutate(&mut self, mutation_rate: f32) {
+        self.mutate_synapses(mutation_rate);
+    }
+
+    /// Mutates connections in the network given the current mutation rate
+    fn mutate_synapses(&mut self, epsilon: f32) {
+        let mut rng = rand::thread_rng();
+
+        //synaptic mutation
+        let normal = Normal::new(0., 0.1).unwrap();
+        for edge_index in self.graph.edge_indices() {
+            if rng.gen::<f32>() < epsilon {
+                let new_weight: f32 = self.graph[edge_index] + normal.sample(&mut rng);
+                self.graph[edge_index] = if new_weight > 0. {new_weight} else {0.};
+            }
+
+        }
+    }
+
+    //transfer ownership
+    pub fn transfer(self) -> Self {
+        self
+    }
+
+    /// Helper function to identify neurons of a paritcular type and returns them sorted by id
+    fn fetch_neuron_list_by_type(&self, neurontype: NeuronType) -> Vec<NodeIndex> {
+        let mut neuron_ids: Vec<String> = self.genome.topology.iter()
+            .filter(|x| x.pin == neurontype)
+            .map(|tg| String::from(&tg.innovation_number))
             .collect();
 
-        input_ids.sort();
+        neuron_ids.sort();
 
-        input_ids.iter().map(|id| self.node_identity_map[id]).collect()
+        neuron_ids.iter().map(|id| self.node_identity_map[id]).collect()
+    }
+
+    /// Performs propagation at an individual node
+    fn propagate_node(&mut self, node: NodeIndex) {
+        let node_parents = self.graph.neighbors_directed(node, petgraph::Direction::Incoming);
+
+        let mut dot_product: f32 = 0.;
+        let mut n_parents = 0;
+
+        for pnode in node_parents {
+
+            n_parents += 1;
+
+            //grab current synaptic weights
+            let edge = self.graph.find_edge(pnode, node);
+
+            let synaptic_value: f32 = match edge {
+                Some(syn) => *self.graph.edge_weight(syn).expect("Connection was not initialized!"),
+                None => panic!("Improper Edge")
+            };
+
+            dot_product = dot_product + synaptic_value * self.graph[pnode].output_value();
+        }
+
+        if n_parents > 0  { self.graph[node].propagate(dot_product) };
     }
 
     /// Forward propagate through the neural network.
     /// This function takes a vector of input values and populates the network output.
     pub fn fwd(&mut self, input: Vec<f32>) {
         // For all input neurons, set values to input
-        let input_nodes = self.fetch_network_input_neurons();
+        let input_nodes = self.fetch_neuron_list_by_type(NeuronType::In);
         assert_eq!(input.len(), input_nodes.len());
 
         for (i, &node) in input_nodes.iter().enumerate() {
             self.graph[node].propagate(input[i]);
         }
 
-        // Create a Dfs iterator starting from node `i01`
+        // Create a Dfs iterator starting from first input node
         let init_node = input_nodes[0]; 
         let mut dfs = Dfs::new(&self.graph, init_node);
+
+        // Iterate over the nodes in depth-first order without visiting output nodes
+        while let Some(nx) = dfs.next(&self.graph) {
+            if self.graph[nx].neuron_type == NeuronType::Out { continue };
+            self.propagate_node(nx);
+        }
 
         // Create a vector to store the result
         let mut network_output: Vec<f32> = Vec::new();
 
-        // Iterate over the nodes in depth-first order
-        while let Some(nx) = dfs.next(&self.graph) {
+        let output_neurons = self.fetch_neuron_list_by_type(NeuronType::Out);
 
-            let node_parents = self.graph.neighbors_directed(nx, petgraph::Direction::Incoming);
-
-            let mut dot_product: f32 = 0.;
-
-            for pnode in node_parents {
-
-
-                //grab current synaptic weights
-                let edge = self.graph.find_edge(pnode, nx);
-
-                let synaptic_value: f32 = match edge {
-                    Some(syn) => *self.graph.edge_weight(syn).expect("Connection was not initialized!"),
-                    None => panic!("Improper Edge")
-                };
-
-                dot_product = dot_product + synaptic_value * self.graph[pnode].output_value();
+        for nx in output_neurons {
+            self.propagate_node(nx);
+            network_output.push( self.graph[nx].output_value() );
             }
-
-            self.graph[nx].propagate(dot_product);
-
-            match self.graph[nx].neuron_type {
-                NeuronType::Out => network_output.push( self.graph[nx].output_value() ),
-                _ => continue
-            }
-
-        }
 
         self.network_output = network_output;
     }
@@ -150,26 +197,103 @@ impl FeedForwardNeuralNetwork {
 
 }
 
+#[derive(Debug, Error)]
+pub enum GraphConstructionError {
+    #[error("Enecode level error during recombination.")]
+    EnecodeRecombinationError
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::doctest::{GENOME_EXAMPLE, GENOME_EXAMPLE2};
 
     #[test]
     fn test_initialize() {
-        // Your test code here
-        // Create an EneCode and use it to initialize a FeedForwardNeuralNetwork
+        let genome = GENOME_EXAMPLE.clone();
+
+        // Create an EneCode and use it to initialize a NeuralNetwork
+        let mut network_example = NeuralNetwork::new(genome);
+        network_example.initialize();
+
         // Validate that the graph is built correctly
+        let mut dfs = Dfs::new(&network_example.graph, network_example.node_identity_map["input_1"]);
+
+        let mut traversal_order: Vec<String> = Vec::new();
+
+        while let Some(nx) = dfs.next(&network_example.graph) {
+            traversal_order.push(network_example.graph[nx].id.clone())
+        }
+
+        assert_eq!(vec!["input_1", "N1", "output_1"], traversal_order);
     }
 
     #[test]
-    fn test_fwd() {
-        // Your test code here
+    fn test_fwd_fetch_network_output() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut network_example = NeuralNetwork::new(genome);
+        network_example.initialize();
+
+        network_example.fwd(vec![0.]);
         // Test the forward pass and verify that the network_output is as expected
+        
+        let network_out = network_example.fetch_network_output();
+        assert_eq!(network_out[0],  0.);
+
+        network_example.fwd(vec![2.]);
+
+
+        let network_out = network_example.fetch_network_output();
+        assert!(network_out[0] > 0.);
     }
 
     #[test]
-    fn test_fetch_network_output() {
-        // Your test code here
-        // Test that the fetch_network_output function returns the expected output
+    fn test_mutate_synapses() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut network_example = NeuralNetwork::new(genome);
+        network_example.initialize();
+
+        let gt = GENOME_EXAMPLE.clone();
+        let n1gene = gt.topology_gene(&String::from("N1"));
+        let weight_before_mut: f32 = n1gene.inputs["input_1"];
+
+        let epsilon: f32 = 1.;
+
+        network_example.mutate_synapses(epsilon);
+
+        let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
+
+        let synaptic_value: f32 = match in1_n1_edge {
+            Some(syn) => *network_example.graph.edge_weight(syn).expect("Edge not found!!"),
+            None => panic!("No weight at edge index")
+        };
+
+        assert_ne!(synaptic_value, weight_before_mut);
+
+    }
+
+    #[test]
+    fn test_recombine_enecode() {
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        let ene1 = GENOME_EXAMPLE.clone();
+        let mut network1 = NeuralNetwork::new(ene1);
+        network1.initialize();
+
+        let ene2 = GENOME_EXAMPLE2.clone();
+        let mut network2 = NeuralNetwork::new(ene2);
+        network2.initialize();
+
+        let mut recombined = network1.recombine_enecode(&mut rng, &network2).unwrap();
+        println!("Offspring genome: {:#?}", recombined.genome.topology);
+        recombined.fwd(vec![1.]);
+
+        let test_output = recombined.fetch_network_output();
+        assert_ne!(test_output[0], 0.);
+
+        let recombined_nodes: Vec<_> = recombined.node_identity_map.keys().map(|k| String::from(k)).collect();
+
+        assert!(recombined_nodes.len() == 4);
     }
 }

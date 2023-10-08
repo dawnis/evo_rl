@@ -2,6 +2,7 @@ pub mod neuron;
 pub mod enecode;
 pub mod graph;
 pub mod doctest;
+pub mod population;
 
 use polars::prelude::*;
 use std::path::PathBuf;

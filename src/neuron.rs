@@ -26,6 +26,7 @@ use na::DVector;
 /// // code example here
 #[derive(Debug, Clone)]
 pub struct Nn {
+    pub id: String,
     pub synaptic_weights: DVector<f32>,
     pub neuronal_bias: f32,
     pub inputs: Vec<String>,
@@ -48,6 +49,7 @@ impl From<Arc<NeuronalEneCode<'_>>> for Nn {
         }
 
         Nn {
+            id: ene.neuron_id.clone(),
             inputs: inputs_as_list,
             synaptic_weights: DVector::from_vec(weights_as_list), 
             neuronal_bias: ene.topology.genetic_bias,
@@ -100,11 +102,13 @@ impl Nn{
 
     fn set_value(&mut self, in_value: f32) {
         self.activation_level = in_value;
+        println!("Setting neuron {} to activation level of {}", self.id, self.activation_level);
     }
 
     fn fwd(&mut self, impulse: f32) {
         self.activation_level = self.activation_level * (-self.tau).exp() + impulse + self.neuronal_bias;
         //self.learn?
+        println!("Activation level for neuron {} set at {} after impulse {}", self.id, self.activation_level, impulse);
     }
 
     fn nonlinearity(&self, z: &f32) -> f32 {
