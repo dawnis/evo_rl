@@ -6,7 +6,7 @@ use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
-use petgraph::visit::Dfs;
+use petgraph::visit::Bfs;
 use thiserror::Error;
 
 /// `NeuralNetwork` is a struct that represents a directed graph
@@ -167,9 +167,9 @@ impl NeuralNetwork {
             self.graph[node].propagate(input[i]);
         }
 
-        // Create a Dfs iterator starting from first input node
+        // Create a Bfs iterator starting from first input node
         let init_node = input_nodes[0]; 
-        let mut dfs = Dfs::new(&self.graph, init_node);
+        let mut dfs = Bfs::new(&self.graph, init_node);
 
         // Iterate over the nodes in depth-first order without visiting output nodes
         while let Some(nx) = dfs.next(&self.graph) {
@@ -218,7 +218,7 @@ mod tests {
         network_example.initialize();
 
         // Validate that the graph is built correctly
-        let mut dfs = Dfs::new(&network_example.graph, network_example.node_identity_map["input_1"]);
+        let mut dfs = Bfs::new(&network_example.graph, network_example.node_identity_map["input_1"]);
 
         let mut traversal_order: Vec<String> = Vec::new();
 
