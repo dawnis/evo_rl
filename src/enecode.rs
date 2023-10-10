@@ -1,3 +1,4 @@
+use log::*;
 use rand::Rng;
 use rand::seq::IteratorRandom;
 use std::collections::HashMap;
@@ -92,7 +93,7 @@ impl EneCode {
         // second determine location of each crossover point
         let mut crossover_points: Vec<usize> = (0..self.neuron_id.len() - 1).choose_multiple(rng, n_crossover);
         crossover_points.sort();
-        //println!("Crossover points {:#?}", crossover_points);
+        debug!("Crossover points {:#?}", crossover_points);
 
         let mut recombined_offspring_topology: Vec<TopologyGene> = Vec::new();
 
@@ -275,6 +276,7 @@ mod tests {
     use rand::rngs::StdRng;
     use assert_matches::assert_matches;
     use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2};
+    use crate::setup_logger;
 
     #[test]
     fn test_new_from_enecode() {
@@ -335,6 +337,8 @@ mod tests {
 
     #[test]
     fn test_recombine_same_topology_different_genetic_bias() {
+        setup_logger();
+
         let seed = [17; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
 
@@ -361,7 +365,7 @@ mod tests {
         let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
         let recombined_genetic_bias: Vec<_> = recombined.topology.iter().map(|tg| tg.genetic_bias).collect();
 
-        println!("Recombined bias vector {:#?}", recombined_genetic_bias);
+        info!("Recombined bias vector {:#?}", recombined_genetic_bias);
         assert_ne!(recombined_genetic_bias, vec![0., 0., 0., 0.]);
         assert_ne!(recombined_genetic_bias, vec![5., 5., 5., 5.]);
         assert_eq!(recombined_genetic_bias.len(), ene1.neuron_id.len());

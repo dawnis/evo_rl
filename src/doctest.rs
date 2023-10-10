@@ -1,20 +1,8 @@
 use crate::enecode::*;
+use crate::{hash_em, ez_input};
 use std::collections::HashMap;
 use lazy_static::lazy_static;
 
-
-fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {
-    let mut hm: HashMap<String, f32> = HashMap::new();
-    for (inn_number, weight) in names.iter().zip(weights.iter()) {
-        hm.insert(String::from(*inn_number), *weight);
-    }
-
-    hm
-}
-
-fn ez_input(names: Vec<&str>) -> Vec<String> {
-    names.iter().map(|&n| String::from(n)).collect()
-}
 
 lazy_static! {
     pub static ref GENOME_EXAMPLE: EneCode =  EneCode {

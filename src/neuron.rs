@@ -1,7 +1,4 @@
-// TODO:
-// 1. backpropagation 
-// 2. evolvable synaptic learning
-
+use log::*;
 use nalgebra as na;
 use std::sync::Arc;
 use crate::enecode::{NeuronalEneCode, NeuronType};
@@ -102,13 +99,13 @@ impl Nn{
 
     fn set_value(&mut self, in_value: f32) {
         self.activation_level = in_value;
-        println!("Setting neuron {} to activation level of {}", self.id, self.activation_level);
+        debug!("Setting neuron {} to activation level of {}", self.id, self.activation_level);
     }
 
     fn fwd(&mut self, impulse: f32) {
         self.activation_level = self.activation_level * (-self.tau).exp() + impulse + self.neuronal_bias;
         //self.learn?
-        println!("Activation level for neuron {} set at {} after impulse {}", self.id, self.activation_level, impulse);
+        debug!("Activation level for neuron {} set at {} after impulse {}", self.id, self.activation_level, impulse);
     }
 
     fn nonlinearity(&self, z: &f32) -> f32 {

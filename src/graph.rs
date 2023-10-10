@@ -1,3 +1,4 @@
+use log::*;
 use crate::neuron::Nn;
 use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use rand::prelude::*;
@@ -206,7 +207,7 @@ pub enum GraphConstructionError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::doctest::{GENOME_EXAMPLE, GENOME_EXAMPLE2};
+    use crate::{doctest::{GENOME_EXAMPLE, GENOME_EXAMPLE2}, setup_logger};
 
     #[test]
     fn test_initialize() {
@@ -274,6 +275,8 @@ mod tests {
 
     #[test]
     fn test_recombine_enecode() {
+        setup_logger();
+
         let seed = [0; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
 
@@ -286,7 +289,7 @@ mod tests {
         network2.initialize();
 
         let mut recombined = network1.recombine_enecode(&mut rng, &network2).unwrap();
-        println!("Offspring genome: {:#?}", recombined.genome.topology);
+        info!("Offspring genome: {:#?}", recombined.genome.topology);
         recombined.fwd(vec![1.]);
 
         let test_output = recombined.fetch_network_output();
