@@ -99,6 +99,18 @@ impl NeuralNetwork {
         self.mutate_synapses(mutation_rate);
     }
 
+    /// Mutates properties in the Nn struct
+    fn mutate_nn(&mut self, mutation_rate: f32) {
+        let mut rng = rand::thread_rng();
+
+        for nn in self.node_identity_map.keys() {
+            let node = self.node_identity_map[nn];
+            self.graph[node].mutate(&mut rng, mutation_rate);
+        }
+        
+
+    }
+
     /// Mutates connections in the network given the current mutation rate
     fn mutate_synapses(&mut self, epsilon: f32) {
         let mut rng = rand::thread_rng();

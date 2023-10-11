@@ -3,13 +3,16 @@ use nalgebra as na;
 use std::sync::Arc;
 use crate::enecode::{NeuronalEneCode, NeuronType};
 use na::DVector;
+use rand::prelude::*;
+use rand::Rng;
+use rand_distr::{Distribution, Normal};
 
 
 //// `Nn` is a struct that defines an Artificial Neuron.
 /// 
 /// # Fields
 /// * `synaptic_weights` - A vector of synaptic weights.
-/// * `neuronal_bias` - A synaptic bias for the neuron.
+/// * `bias` - A synaptic bias for the neuron.
 /// * `inputs` - A list of input neurons.
 /// * `activation_level` - The neuron's activation level.
 /// * `tau` - The neuron's time constant.
@@ -25,7 +28,7 @@ use na::DVector;
 pub struct Nn {
     pub id: String,
     pub synaptic_weights: DVector<f32>,
-    pub neuronal_bias: f32,
+    pub bias: f32,
     pub inputs: Vec<String>,
     pub activation_level: f32,
     pub tau: f32,
@@ -49,7 +52,7 @@ impl From<Arc<NeuronalEneCode<'_>>> for Nn {
             id: ene.neuron_id.clone(),
             inputs: inputs_as_list,
             synaptic_weights: DVector::from_vec(weights_as_list), 
-            neuronal_bias: ene.topology.genetic_bias,
+            bias: ene.topology.genetic_bias,
             activation_level: 0., 
             tau: ene.properties.tau,
             learning_rate: ene.meta.learning_rate,
@@ -97,13 +100,23 @@ impl Nn{
         }
     }
 
+    //mutation of Nn struct
+    pub fn mutate<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
+        //bias mutation
+        let normal = Normal::new(0., 0.1).unwrap();
+        if rng.gen::<f32>() < epsilon {
+            let updated_bias = self.bias + normal.sample(rng);
+            self.bias = updated_bias;
+        }
+    }
+
     fn set_value(&mut self, in_value: f32) {
         self.activation_level = in_value;
         debug!("Setting neuron {} to activation level of {}", self.id, self.activation_level);
     }
 
     fn fwd(&mut self, impulse: f32) {
-        self.activation_level = self.activation_level * (-self.tau).exp() + impulse + self.neuronal_bias;
+        self.activation_level = self.activation_level * (-self.tau).exp() + impulse + self.bias;
         //self.learn?
         debug!("Activation level for neuron {} set at {} after impulse {}", self.id, self.activation_level, impulse);
     }
@@ -161,6 +174,24 @@ mod tests {
 
         assert_eq!(neuron.activation_level, 17.);
         assert_eq!(neuron.output_value(), (17_f32).tanh());
+    }
+
+    #[test]
+    fn test_mutate() {
+        let nec = NeuronalEneCode {
+            neuron_id: "h01".to_string(),
+            topology: &TOPOLOGY_GENE_EXAMPLE,
+            properties: &NEURONAL_PROPERTIES_GENE_EXAMPLE,
+            meta: &META_GENE_EXAMPLE,
+        };
+
+        let mut neuron = Nn::from(Arc::new(nec));
+
+        let seed = [17; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+        neuron.mutate(&mut rng, 1.);
+
+        assert_ne!(neuron.bias, 5.);
     }
 }
 
