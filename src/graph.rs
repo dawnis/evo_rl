@@ -96,30 +96,29 @@ impl NeuralNetwork {
     
     /// Run mutation for this network
     pub fn mutate(&mut self, mutation_rate: f32) {
-        self.mutate_synapses(mutation_rate);
+        let mut rng = rand::thread_rng();
+        self.mutate_synapses(&mut rng, mutation_rate);
+        self.mutate_nn(&mut rng, mutation_rate);
     }
 
     /// Mutates properties in the Nn struct
-    fn mutate_nn(&mut self, mutation_rate: f32) {
-        let mut rng = rand::thread_rng();
+    fn mutate_nn<R: Rng>(&mut self, rng: &mut R, mutation_rate: f32) {
 
         for nn in self.node_identity_map.keys() {
             let node = self.node_identity_map[nn];
-            self.graph[node].mutate(&mut rng, mutation_rate);
+            self.graph[node].mutate(rng, mutation_rate);
         }
         
 
     }
 
     /// Mutates connections in the network given the current mutation rate
-    fn mutate_synapses(&mut self, epsilon: f32) {
-        let mut rng = rand::thread_rng();
-
+    fn mutate_synapses<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
         //synaptic mutation
         let normal = Normal::new(0., 0.1).unwrap();
         for edge_index in self.graph.edge_indices() {
             if rng.gen::<f32>() < epsilon {
-                let new_weight: f32 = self.graph[edge_index] + normal.sample(&mut rng);
+                let new_weight: f32 = self.graph[edge_index] + normal.sample(rng);
                 self.graph[edge_index] = if new_weight > 0. {new_weight} else {0.};
             }
 
@@ -272,7 +271,10 @@ mod tests {
 
         let epsilon: f32 = 1.;
 
-        network_example.mutate_synapses(epsilon);
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        network_example.mutate_synapses(&mut rng, epsilon);
 
         let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
 
@@ -282,6 +284,35 @@ mod tests {
         };
 
         assert_ne!(synaptic_value, weight_before_mut);
+
+    }
+
+    #[test]
+    fn test_mutate() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut network_example = NeuralNetwork::new(genome);
+        network_example.initialize();
+
+        let gt = GENOME_EXAMPLE.clone();
+        let n1gene = gt.topology_gene(&String::from("N1"));
+        let weight_before_mut: f32 = n1gene.inputs["input_1"];
+        let bias_before_mut: f32 = n1gene.genetic_bias;
+
+        let epsilon: f32 = 1.;
+
+        network_example.mutate(epsilon);
+
+        let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
+
+        let synaptic_value: f32 = match in1_n1_edge {
+            Some(syn) => *network_example.graph.edge_weight(syn).expect("Edge not found!!"),
+            None => panic!("No weight at edge index")
+        };
+
+        let bias_value: f32 = network_example.graph[network_example.node_identity_map["N1"]].bias;
+
+        assert_ne!(synaptic_value, weight_before_mut);
+        assert_ne!(bias_value, bias_before_mut);
 
     }
 
