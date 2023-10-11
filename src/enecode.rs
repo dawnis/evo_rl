@@ -4,6 +4,8 @@ use rand::seq::IteratorRandom;
 use std::collections::HashMap;
 use thiserror::Error;
 
+use crate::graph::NeuralNetwork;
+
 /// `EneCode` encapsulates the genetic blueprint for constructing an entire neural network.
 ///
 /// This struct holds all the information required to instantiate a neural network with
@@ -60,12 +62,61 @@ use thiserror::Error;
 ///     },
 /// };
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EneCode {
     pub neuron_id: Vec<String>, //equivalent to innovation_number in TopologyGene
     pub topology: Vec<TopologyGene>,
     pub neuronal_props: NeuronalPropertiesGene,
     pub meta_learning: MetaLearningGene,
+}
+
+/// Creates genome from neural network after recombination and mutation
+impl From<&NeuralNetwork> for EneCode {
+    fn from(network: &NeuralNetwork) ->  Self {
+        let neuron_id: Vec<String> = network.node_identity_map.keys().map(|id| String::from(id)).collect();
+
+        let mut topology: Vec<TopologyGene> = Vec::new();
+        for id in neuron_id.iter() {
+            //Identify parent nodes and build HashMap of Weights
+            let node = network.node_identity_map[id];
+            let node_parents = network.graph.neighbors_directed(node, petgraph::Direction::Incoming);
+
+            let mut input_map: HashMap<String, f32> = HashMap::new();
+
+            for parent in node_parents {
+                let parent_id = network.graph[parent].id.clone();
+                let edge_id = network.graph.find_edge(parent, node);
+
+                let edge_weight: f32 = match edge_id {
+                    Some(w) => *network.graph.edge_weight(w).unwrap(),
+                    None => panic!("Edge ID was not found"),
+                };
+
+                input_map.insert(parent_id, edge_weight);
+            }
+
+            topology.push (
+                TopologyGene {
+                    innovation_number: network.graph[node].id.clone(),
+                    inputs: input_map,
+                    pin: network.graph[node].neuron_type.clone(),
+                    genetic_bias: network.graph[node].bias,
+                    active: true,
+                }
+            )
+
+        }
+
+        let neuronal_props = network.genome.neuronal_props.clone();
+        let meta_learning = network.genome.meta_learning.clone();
+
+        EneCode {
+            neuron_id,
+            topology,
+            neuronal_props,
+            meta_learning
+        }
+    }
 }
 
 impl EneCode {
@@ -301,6 +352,18 @@ mod tests {
 
         // Validate that the properties have been copied over correctly
         assert_eq!(neuronal_ene_code, expected_nec);
+    }
+
+    #[test]
+    fn test_enecode_from_neural_network() {
+        let genome = GENOME_EXAMPLE.clone();
+        let genome_comparison = GENOME_EXAMPLE.clone();
+        let mut network_example = NeuralNetwork::new(genome);
+        network_example.initialize();
+
+        let test_enecode = EneCode::from(&network_example);
+
+        assert_eq!(test_enecode, genome_comparison);
     }
 
     #[test]

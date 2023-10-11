@@ -40,9 +40,9 @@ use thiserror::Error;
 /// ```
 #[derive(Debug, Clone)]
 pub struct NeuralNetwork {
-    genome: EneCode,
-    graph: DiGraph<Nn, f32>,
-    node_identity_map: HashMap<String, NodeIndex>,
+    pub genome: EneCode,
+    pub graph: DiGraph<Nn, f32>,
+    pub node_identity_map: HashMap<String, NodeIndex>,
     network_output: Vec<f32>,
 }
 
@@ -99,17 +99,26 @@ impl NeuralNetwork {
         let mut rng = rand::thread_rng();
         self.mutate_synapses(&mut rng, mutation_rate);
         self.mutate_nn(&mut rng, mutation_rate);
+        let new_enecode = self.read_current_enecode();
+        self.update_genome(new_enecode);
+    }
+
+    // Gets copy of current genome prior to update
+    fn read_current_enecode(&self) -> EneCode {
+        EneCode::from(self)
+    }
+
+    // Updates genome with current weights and nn fields
+    fn update_genome(&mut self, updated_genome: EneCode) {
+        self.genome = updated_genome;
     }
 
     /// Mutates properties in the Nn struct
     fn mutate_nn<R: Rng>(&mut self, rng: &mut R, mutation_rate: f32) {
-
         for nn in self.node_identity_map.keys() {
             let node = self.node_identity_map[nn];
             self.graph[node].mutate(rng, mutation_rate);
         }
-        
-
     }
 
     /// Mutates connections in the network given the current mutation rate
