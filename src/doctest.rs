@@ -5,9 +5,8 @@ use lazy_static::lazy_static;
 
 
 lazy_static! {
-    pub static ref GENOME_EXAMPLE: EneCode =  EneCode {
-     neuron_id: ez_input(vec!["input_1", "N1", "output_1"]),
-     topology: vec![
+    pub static ref GENOME_EXAMPLE: EneCode =  EneCode::new(
+     vec![
          TopologyGene {
              innovation_number: "input_1".to_string(),
              pin: NeuronType::In,
@@ -31,18 +30,18 @@ lazy_static! {
          },
          // ... more TopologyGene
      ],
-     neuronal_props: NeuronalPropertiesGene {
+     NeuronalPropertiesGene {
          innovation_number: "NP01".to_string(),
          tau: 0.9,
          homeostatic_force: 0.1,
          tanh_alpha: 1.,
      },
-     meta_learning: MetaLearningGene {
+     MetaLearningGene {
          innovation_number: "MTL01".to_string(),
          learning_rate: 0.01,
          learning_threshold: 0.5,
      },
-    };
+    );
 
     pub static ref TOPOLOGY_GENE_EXAMPLE: TopologyGene = TopologyGene {
             innovation_number: "h01".to_string(),
@@ -52,9 +51,8 @@ lazy_static! {
             active: true,
     };
 
-    pub static ref GENOME_EXAMPLE2: EneCode =  EneCode {
-     neuron_id: ez_input(vec!["input_1", "N1", "N2", "output_1"]),
-     topology: vec![
+    pub static ref GENOME_EXAMPLE2: EneCode =  EneCode::new (
+     vec![
          TopologyGene {
              innovation_number: "input_1".to_string(),
              pin: NeuronType::In,
@@ -85,18 +83,18 @@ lazy_static! {
          },
          // ... more TopologyGene
      ],
-     neuronal_props: NeuronalPropertiesGene {
+     NeuronalPropertiesGene {
          innovation_number: "NP01".to_string(),
          tau: 0.9,
          homeostatic_force: 0.1,
          tanh_alpha: 1.,
      },
-     meta_learning: MetaLearningGene {
+     MetaLearningGene {
          innovation_number: "MTL01".to_string(),
          learning_rate: 0.01,
          learning_threshold: 0.5,
      },
-    };
+    );
 
     pub static ref META_GENE_EXAMPLE: MetaLearningGene = MetaLearningGene {
             innovation_number: "mtg01".to_string(),
@@ -111,9 +109,8 @@ lazy_static! {
             tanh_alpha: 1.,
     };
 
-    pub static ref XOR_GENOME: EneCode = EneCode {
-        neuron_id: ez_input(vec!["i01", "i02", "D", "E"]),
-        topology: vec![
+    pub static ref XOR_GENOME: EneCode = EneCode::new (
+        vec![
             TopologyGene {
                 innovation_number: "i01".to_string(),
                 pin: NeuronType::In,
@@ -146,19 +143,19 @@ lazy_static! {
                 active: true,
             },
         ],
-        neuronal_props: NeuronalPropertiesGene {
+        NeuronalPropertiesGene {
             innovation_number: "p01".to_string(),
             tau: 0.,
             homeostatic_force: 0.,
             tanh_alpha: 1.,
         },
-        meta_learning: MetaLearningGene {
+        MetaLearningGene {
             innovation_number: "m01".to_string(),
             learning_rate: 0.001,
             learning_threshold: 0.5,
         }
 
-    };
+    );
 
 }
 

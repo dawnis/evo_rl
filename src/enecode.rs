@@ -37,9 +37,8 @@ use crate::graph::NeuralNetwork;
 /// # use std::collections::HashMap;
 ///
 /// // Initialization (example)
-/// let genome = EneCode {
-///     neuron_id: vec!["N1".to_string(), "N2".to_string()],
-///     topology: vec![
+/// let genome = EneCode::new (
+///     vec![
 ///         TopologyGene {
 ///             innovation_number: "N1".to_string(),
 ///             pin: NeuronType::In,
@@ -49,18 +48,17 @@ use crate::graph::NeuralNetwork;
 ///         },
 ///         // ... more TopologyGene
 ///     ],
-///     neuronal_props: NeuronalPropertiesGene {
+///     NeuronalPropertiesGene {
 ///         innovation_number: "NP01".to_string(),
 ///         tau: 0.9,
 ///         homeostatic_force: 0.1,
 ///         tanh_alpha: 2.0,
 ///     },
-///     meta_learning: MetaLearningGene {
+///     MetaLearningGene {
 ///         innovation_number: "MTL01".to_string(),
 ///         learning_rate: 0.01,
 ///         learning_threshold: 0.5,
-///     },
-/// };
+///     });
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct EneCode {
@@ -117,7 +115,7 @@ impl From<&NeuralNetwork> for EneCode {
 impl EneCode {
     ///Constructor function for EneCode, puts things into correct order based on NeuronType and
     ///innovation number
-    fn new(topology: Vec<TopologyGene>, neuronal_props: NeuronalPropertiesGene, meta_learning: MetaLearningGene) -> Self {
+    pub fn new(topology: Vec<TopologyGene>, neuronal_props: NeuronalPropertiesGene, meta_learning: MetaLearningGene) -> Self {
 
         let mut topology_s: Vec<TopologyGene> = Vec::new();
         let mut topology_hidden: Vec<TopologyGene> = Vec::new();
@@ -140,7 +138,7 @@ impl EneCode {
         topology_s.extend(topology_hidden.drain(..));
         topology_s.extend(topology_outputs.drain(..));
 
-        let neuron_id: Vec<String> = topology_s.iter().map(|tg| tg.innovation_number.clone()).collect();
+        let neuron_id: Vec<String> = topology_s.iter().map(|tg| String::from(&tg.innovation_number)).collect();
 
         EneCode {
             neuron_id,
@@ -234,13 +232,7 @@ impl EneCode {
             recombined_offspring_topology.extend(others_copy.drain(..));
         }
 
-
-        Ok(EneCode {
-            neuron_id: recombined_offspring_topology.iter().map(|tg| String::from(&tg.innovation_number)).collect(),
-            topology: recombined_offspring_topology,
-            neuronal_props: self.neuronal_props.clone(),
-            meta_learning: self.meta_learning.clone(),
-        })
+        Ok(EneCode::new(recombined_offspring_topology, self.neuronal_props.clone(), self.meta_learning.clone()))
     }
 
 
