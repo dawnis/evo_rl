@@ -1,5 +1,5 @@
 use crate::enecode::*;
-use crate::{hash_em, ez_input};
+use crate::hash_em;
 use std::collections::HashMap;
 use lazy_static::lazy_static;
 
