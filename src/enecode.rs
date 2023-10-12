@@ -110,16 +110,48 @@ impl From<&NeuralNetwork> for EneCode {
         let neuronal_props = network.genome.neuronal_props.clone();
         let meta_learning = network.genome.meta_learning.clone();
 
-        EneCode {
-            neuron_id,
-            topology,
-            neuronal_props,
-            meta_learning
-        }
+        EneCode::new(topology, neuronal_props, meta_learning) 
     }
 }
 
 impl EneCode {
+    ///Constructor function for EneCode, puts things into correct order based on NeuronType and
+    ///innovation number
+    fn new(topology: Vec<TopologyGene>, neuronal_props: NeuronalPropertiesGene, meta_learning: MetaLearningGene) -> Self {
+
+        let mut topology_s: Vec<TopologyGene> = Vec::new();
+        let mut topology_hidden: Vec<TopologyGene> = Vec::new();
+        let mut topology_outputs: Vec<TopologyGene> = Vec::new();
+
+        for tg in topology.into_iter() {
+
+            match tg.pin {
+                NeuronType::In => topology_s.push(tg),
+                NeuronType::Hidden => topology_hidden.push(tg),
+                NeuronType::Out => topology_outputs.push(tg),
+            };
+
+        }
+
+        topology_s.sort_by_key(|tg| tg.innovation_number.clone() );
+        topology_hidden.sort_by_key(|tg| tg.innovation_number.clone() );
+        topology_outputs.sort_by_key(|tg| tg.innovation_number.clone() );
+
+        topology_s.extend(topology_hidden.drain(..));
+        topology_s.extend(topology_outputs.drain(..));
+
+        let neuron_id: Vec<String> = topology_s.iter().map(|tg| tg.innovation_number.clone()).collect();
+
+        EneCode {
+            neuron_id,
+            topology: topology_s,
+            neuronal_props,
+            meta_learning
+        }
+
+
+    }
+
     /// Fetches the topology gene corresponding to a given neuron ID.
     ///
     /// # Arguments
