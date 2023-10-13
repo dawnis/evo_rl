@@ -1,5 +1,6 @@
 use rand::Rng;
 use rand::distributions::{Distribution, Uniform};
+use log::*;
 
 use crate::{graph::NeuralNetwork, enecode::EneCode};
 
@@ -9,7 +10,7 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 ///
 
 trait FitnessFunction {
-    fn fitness(&self, agent: &NeuralNetwork) -> f32;
+    fn fitness(&self, agent: &mut NeuralNetwork) -> f32;
 }
 
 struct Population {
@@ -46,7 +47,7 @@ impl Population {
     }
 
     fn evaluate_fitness<T: FitnessFunction>(&mut self, f: &T) {
-        let fitness_vector: Vec<f32> = self.agents.iter().map(|x| f.fitness(x)).collect();
+        let fitness_vector: Vec<f32> = self.agents.iter_mut().map(|x| f.fitness(x)).collect();
         self.agent_fitness = fitness_vector;
     }
 
@@ -128,17 +129,21 @@ impl Population {
         offspring
     }
 
-    pub fn evolve<T:FitnessFunction>(&mut self, fitness_eval: T, iterations_max: usize, max_fitness_criterion: f32) ->  bool {
+    pub fn evolve<T:FitnessFunction>(&mut self, fitness_eval: &T, iterations_max: usize, max_fitness_criterion: f32) {
         //reset generation value
         self.generation = 0;
 
         while self.generation < iterations_max {
-            self.evaluate_fitness(&fitness_eval);
+            self.evaluate_fitness(fitness_eval);
 
             // Select same population size, but use SUS to select according to fitness
             let selection = self.selection(self.size);
 
-            let offspring = self.generate_offspring(selection);
+            let mut offspring = self.generate_offspring(selection);
+
+            for agent in offspring.iter_mut() {
+                agent.mutate(self.mutation_rate);
+            }
 
             self.agents = offspring;
             self.population_fitness = self.agent_fitness.iter().sum::<f32>() / self.size as f32;
@@ -148,15 +153,19 @@ impl Population {
                 break;
             }
 
+            info!("Observing population fitness {} on generation {} of evolution", self.population_fitness, self.generation);
+
         }
-        false
+
     }
 
 }
 
 mod tests {
     use super::*;
-    use crate::doctest::GENOME_EXAMPLE;
+    use crate::graph::NeuralNetwork;
+    use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME};
+    use crate::setup_logger;
 
     #[test]
     fn test_create_population() {
@@ -172,7 +181,7 @@ mod tests {
         }
 
         impl FitnessFunction for TestFitnessObject {
-            fn fitness(&self, _agent: &NeuralNetwork) -> f32 {
+            fn fitness(&self, _agent: &mut NeuralNetwork) -> f32 {
                 1.
             }
         }
@@ -220,7 +229,50 @@ mod tests {
     }
 
     #[test]
-    fn test_run_generation() {
+    fn test_evolve() {
+        setup_logger();
+
+        let genome = XOR_GENOME.clone();
+        let mut population = Population::new(genome, 125, 0.05);
+
+        struct XorEvaluation {
+            pub fitness_begin: f32
+        }
+
+        impl XorEvaluation {
+            pub fn new() -> Self {
+                XorEvaluation {
+                    fitness_begin: 4.0
+                }
+            }
+
+        }
+
+        impl FitnessFunction for XorEvaluation {
+            fn fitness(&self, agent: &mut NeuralNetwork) -> f32 {
+                let mut fitness_evaluation = self.fitness_begin;
+
+                for bit1 in 0..2 {
+                    for bit2 in 0..2 {
+                        agent.fwd(vec![bit1 as f32, bit2 as f32]);
+                        let network_output = agent.fetch_network_output();
+
+                        let xor_true = (bit1 > 0) ^ (bit2 > 0);
+                        let xor_true_float: f32 = if xor_true {1.} else {0.};
+
+                        fitness_evaluation -= (xor_true_float - network_output[0]).powf(2.);
+
+                    }
+                }
+
+                fitness_evaluation
+            }
+        }
+
+        let evaluation_function = XorEvaluation::new();
+
+        population.evolve(&evaluation_function, 200, 4.);
+        assert!(population.population_fitness > 3.8);
     }
 
 }
