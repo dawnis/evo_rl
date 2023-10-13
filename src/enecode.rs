@@ -1,7 +1,10 @@
+use log::*;
 use rand::Rng;
 use rand::seq::IteratorRandom;
 use std::collections::HashMap;
 use thiserror::Error;
+
+use crate::graph::NeuralNetwork;
 
 /// `EneCode` encapsulates the genetic blueprint for constructing an entire neural network.
 ///
@@ -34,9 +37,8 @@ use thiserror::Error;
 /// # use std::collections::HashMap;
 ///
 /// // Initialization (example)
-/// let genome = EneCode {
-///     neuron_id: vec!["N1".to_string(), "N2".to_string()],
-///     topology: vec![
+/// let genome = EneCode::new (
+///     vec![
 ///         TopologyGene {
 ///             innovation_number: "N1".to_string(),
 ///             pin: NeuronType::In,
@@ -46,20 +48,19 @@ use thiserror::Error;
 ///         },
 ///         // ... more TopologyGene
 ///     ],
-///     neuronal_props: NeuronalPropertiesGene {
+///     NeuronalPropertiesGene {
 ///         innovation_number: "NP01".to_string(),
 ///         tau: 0.9,
 ///         homeostatic_force: 0.1,
 ///         tanh_alpha: 2.0,
 ///     },
-///     meta_learning: MetaLearningGene {
+///     MetaLearningGene {
 ///         innovation_number: "MTL01".to_string(),
 ///         learning_rate: 0.01,
 ///         learning_threshold: 0.5,
-///     },
-/// };
+///     });
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EneCode {
     pub neuron_id: Vec<String>, //equivalent to innovation_number in TopologyGene
     pub topology: Vec<TopologyGene>,
@@ -67,7 +68,88 @@ pub struct EneCode {
     pub meta_learning: MetaLearningGene,
 }
 
+/// Creates genome from neural network after recombination and mutation
+impl From<&NeuralNetwork> for EneCode {
+    fn from(network: &NeuralNetwork) ->  Self {
+        let neuron_id: Vec<String> = network.node_identity_map.keys().map(|id| String::from(id)).collect();
+
+        let mut topology: Vec<TopologyGene> = Vec::new();
+        for id in neuron_id.iter() {
+            //Identify parent nodes and build HashMap of Weights
+            let node = network.node_identity_map[id];
+            let node_parents = network.graph.neighbors_directed(node, petgraph::Direction::Incoming);
+
+            let mut input_map: HashMap<String, f32> = HashMap::new();
+
+            for parent in node_parents {
+                let parent_id = network.graph[parent].id.clone();
+                let edge_id = network.graph.find_edge(parent, node);
+
+                let edge_weight: f32 = match edge_id {
+                    Some(w) => *network.graph.edge_weight(w).unwrap(),
+                    None => panic!("Edge ID was not found"),
+                };
+
+                input_map.insert(parent_id, edge_weight);
+            }
+
+            topology.push (
+                TopologyGene {
+                    innovation_number: network.graph[node].id.clone(),
+                    inputs: input_map,
+                    pin: network.graph[node].neuron_type.clone(),
+                    genetic_bias: network.graph[node].bias,
+                    active: true,
+                }
+            )
+
+        }
+
+        let neuronal_props = network.genome.neuronal_props.clone();
+        let meta_learning = network.genome.meta_learning.clone();
+
+        EneCode::new(topology, neuronal_props, meta_learning) 
+    }
+}
+
 impl EneCode {
+    ///Constructor function for EneCode, puts things into correct order based on NeuronType and
+    ///innovation number
+    pub fn new(topology: Vec<TopologyGene>, neuronal_props: NeuronalPropertiesGene, meta_learning: MetaLearningGene) -> Self {
+
+        let mut topology_s: Vec<TopologyGene> = Vec::new();
+        let mut topology_hidden: Vec<TopologyGene> = Vec::new();
+        let mut topology_outputs: Vec<TopologyGene> = Vec::new();
+
+        for tg in topology.into_iter() {
+
+            match tg.pin {
+                NeuronType::In => topology_s.push(tg),
+                NeuronType::Hidden => topology_hidden.push(tg),
+                NeuronType::Out => topology_outputs.push(tg),
+            };
+
+        }
+
+        topology_s.sort_by_key(|tg| tg.innovation_number.clone() );
+        topology_hidden.sort_by_key(|tg| tg.innovation_number.clone() );
+        topology_outputs.sort_by_key(|tg| tg.innovation_number.clone() );
+
+        topology_s.extend(topology_hidden.drain(..));
+        topology_s.extend(topology_outputs.drain(..));
+
+        let neuron_id: Vec<String> = topology_s.iter().map(|tg| String::from(&tg.innovation_number)).collect();
+
+        EneCode {
+            neuron_id,
+            topology: topology_s,
+            neuronal_props,
+            meta_learning
+        }
+
+
+    }
+
     /// Fetches the topology gene corresponding to a given neuron ID.
     ///
     /// # Arguments
@@ -92,7 +174,7 @@ impl EneCode {
         // second determine location of each crossover point
         let mut crossover_points: Vec<usize> = (0..self.neuron_id.len() - 1).choose_multiple(rng, n_crossover);
         crossover_points.sort();
-        //println!("Crossover points {:#?}", crossover_points);
+        debug!("Crossover points {:#?}", crossover_points);
 
         let mut recombined_offspring_topology: Vec<TopologyGene> = Vec::new();
 
@@ -150,13 +232,7 @@ impl EneCode {
             recombined_offspring_topology.extend(others_copy.drain(..));
         }
 
-
-        Ok(EneCode {
-            neuron_id: recombined_offspring_topology.iter().map(|tg| String::from(&tg.innovation_number)).collect(),
-            topology: recombined_offspring_topology,
-            neuronal_props: self.neuronal_props.clone(),
-            meta_learning: self.meta_learning.clone(),
-        })
+        Ok(EneCode::new(recombined_offspring_topology, self.neuronal_props.clone(), self.meta_learning.clone()))
     }
 
 
@@ -275,6 +351,7 @@ mod tests {
     use rand::rngs::StdRng;
     use assert_matches::assert_matches;
     use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2};
+    use crate::setup_logger;
 
     #[test]
     fn test_new_from_enecode() {
@@ -299,6 +376,18 @@ mod tests {
 
         // Validate that the properties have been copied over correctly
         assert_eq!(neuronal_ene_code, expected_nec);
+    }
+
+    #[test]
+    fn test_enecode_from_neural_network() {
+        let genome = GENOME_EXAMPLE.clone();
+        let genome_comparison = GENOME_EXAMPLE.clone();
+        let mut network_example = NeuralNetwork::new(genome);
+        network_example.initialize();
+
+        let test_enecode = EneCode::from(&network_example);
+
+        assert_eq!(test_enecode, genome_comparison);
     }
 
     #[test]
@@ -335,6 +424,8 @@ mod tests {
 
     #[test]
     fn test_recombine_same_topology_different_genetic_bias() {
+        setup_logger();
+
         let seed = [17; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
 
@@ -361,7 +452,7 @@ mod tests {
         let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
         let recombined_genetic_bias: Vec<_> = recombined.topology.iter().map(|tg| tg.genetic_bias).collect();
 
-        println!("Recombined bias vector {:#?}", recombined_genetic_bias);
+        info!("Recombined bias vector {:#?}", recombined_genetic_bias);
         assert_ne!(recombined_genetic_bias, vec![0., 0., 0., 0.]);
         assert_ne!(recombined_genetic_bias, vec![5., 5., 5., 5.]);
         assert_eq!(recombined_genetic_bias.len(), ene1.neuron_id.len());

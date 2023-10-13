@@ -1,3 +1,4 @@
+use log::*;
 use crate::neuron::Nn;
 use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use rand::prelude::*;
@@ -5,7 +6,7 @@ use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
-use petgraph::visit::Dfs;
+use petgraph::visit::Bfs;
 use thiserror::Error;
 
 /// `NeuralNetwork` is a struct that represents a directed graph
@@ -39,9 +40,9 @@ use thiserror::Error;
 /// ```
 #[derive(Debug, Clone)]
 pub struct NeuralNetwork {
-    genome: EneCode,
-    graph: DiGraph<Nn, f32>,
-    node_identity_map: HashMap<String, NodeIndex>,
+    pub genome: EneCode,
+    pub graph: DiGraph<Nn, f32>,
+    pub node_identity_map: HashMap<String, NodeIndex>,
     network_output: Vec<f32>,
 }
 
@@ -95,18 +96,38 @@ impl NeuralNetwork {
     
     /// Run mutation for this network
     pub fn mutate(&mut self, mutation_rate: f32) {
-        self.mutate_synapses(mutation_rate);
+        let mut rng = rand::thread_rng();
+        self.mutate_synapses(&mut rng, mutation_rate);
+        self.mutate_nn(&mut rng, mutation_rate);
+        let new_enecode = self.read_current_enecode();
+        self.update_genome(new_enecode);
+    }
+
+    // Gets copy of current genome prior to update
+    fn read_current_enecode(&self) -> EneCode {
+        EneCode::from(self)
+    }
+
+    // Updates genome with current weights and nn fields
+    fn update_genome(&mut self, updated_genome: EneCode) {
+        self.genome = updated_genome;
+    }
+
+    /// Mutates properties in the Nn struct
+    fn mutate_nn<R: Rng>(&mut self, rng: &mut R, mutation_rate: f32) {
+        for nn in self.node_identity_map.keys() {
+            let node = self.node_identity_map[nn];
+            self.graph[node].mutate(rng, mutation_rate);
+        }
     }
 
     /// Mutates connections in the network given the current mutation rate
-    fn mutate_synapses(&mut self, epsilon: f32) {
-        let mut rng = rand::thread_rng();
-
+    fn mutate_synapses<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
         //synaptic mutation
         let normal = Normal::new(0., 0.1).unwrap();
         for edge_index in self.graph.edge_indices() {
             if rng.gen::<f32>() < epsilon {
-                let new_weight: f32 = self.graph[edge_index] + normal.sample(&mut rng);
+                let new_weight: f32 = self.graph[edge_index] + normal.sample(rng);
                 self.graph[edge_index] = if new_weight > 0. {new_weight} else {0.};
             }
 
@@ -166,9 +187,9 @@ impl NeuralNetwork {
             self.graph[node].propagate(input[i]);
         }
 
-        // Create a Dfs iterator starting from first input node
+        // Create a Bfs iterator starting from first input node
         let init_node = input_nodes[0]; 
-        let mut dfs = Dfs::new(&self.graph, init_node);
+        let mut dfs = Bfs::new(&self.graph, init_node);
 
         // Iterate over the nodes in depth-first order without visiting output nodes
         while let Some(nx) = dfs.next(&self.graph) {
@@ -206,7 +227,7 @@ pub enum GraphConstructionError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::doctest::{GENOME_EXAMPLE, GENOME_EXAMPLE2};
+    use crate::{doctest::{GENOME_EXAMPLE, GENOME_EXAMPLE2}, setup_logger};
 
     #[test]
     fn test_initialize() {
@@ -217,7 +238,7 @@ mod tests {
         network_example.initialize();
 
         // Validate that the graph is built correctly
-        let mut dfs = Dfs::new(&network_example.graph, network_example.node_identity_map["input_1"]);
+        let mut dfs = Bfs::new(&network_example.graph, network_example.node_identity_map["input_1"]);
 
         let mut traversal_order: Vec<String> = Vec::new();
 
@@ -259,7 +280,10 @@ mod tests {
 
         let epsilon: f32 = 1.;
 
-        network_example.mutate_synapses(epsilon);
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        network_example.mutate_synapses(&mut rng, epsilon);
 
         let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
 
@@ -273,7 +297,38 @@ mod tests {
     }
 
     #[test]
+    fn test_mutate() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut network_example = NeuralNetwork::new(genome);
+        network_example.initialize();
+
+        let gt = GENOME_EXAMPLE.clone();
+        let n1gene = gt.topology_gene(&String::from("N1"));
+        let weight_before_mut: f32 = n1gene.inputs["input_1"];
+        let bias_before_mut: f32 = n1gene.genetic_bias;
+
+        let epsilon: f32 = 1.;
+
+        network_example.mutate(epsilon);
+
+        let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
+
+        let synaptic_value: f32 = match in1_n1_edge {
+            Some(syn) => *network_example.graph.edge_weight(syn).expect("Edge not found!!"),
+            None => panic!("No weight at edge index")
+        };
+
+        let bias_value: f32 = network_example.graph[network_example.node_identity_map["N1"]].bias;
+
+        assert_ne!(synaptic_value, weight_before_mut);
+        assert_ne!(bias_value, bias_before_mut);
+
+    }
+
+    #[test]
     fn test_recombine_enecode() {
+        setup_logger();
+
         let seed = [0; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
 
@@ -286,7 +341,7 @@ mod tests {
         network2.initialize();
 
         let mut recombined = network1.recombine_enecode(&mut rng, &network2).unwrap();
-        println!("Offspring genome: {:#?}", recombined.genome.topology);
+        info!("Offspring genome: {:#?}", recombined.genome.topology);
         recombined.fwd(vec![1.]);
 
         let test_output = recombined.fetch_network_output();

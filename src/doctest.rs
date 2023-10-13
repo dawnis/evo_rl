@@ -1,25 +1,12 @@
 use crate::enecode::*;
+use crate::hash_em;
 use std::collections::HashMap;
 use lazy_static::lazy_static;
 
 
-fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {
-    let mut hm: HashMap<String, f32> = HashMap::new();
-    for (inn_number, weight) in names.iter().zip(weights.iter()) {
-        hm.insert(String::from(*inn_number), *weight);
-    }
-
-    hm
-}
-
-fn ez_input(names: Vec<&str>) -> Vec<String> {
-    names.iter().map(|&n| String::from(n)).collect()
-}
-
 lazy_static! {
-    pub static ref GENOME_EXAMPLE: EneCode =  EneCode {
-     neuron_id: ez_input(vec!["input_1", "N1", "output_1"]),
-     topology: vec![
+    pub static ref GENOME_EXAMPLE: EneCode =  EneCode::new(
+     vec![
          TopologyGene {
              innovation_number: "input_1".to_string(),
              pin: NeuronType::In,
@@ -43,18 +30,18 @@ lazy_static! {
          },
          // ... more TopologyGene
      ],
-     neuronal_props: NeuronalPropertiesGene {
+     NeuronalPropertiesGene {
          innovation_number: "NP01".to_string(),
          tau: 0.9,
          homeostatic_force: 0.1,
          tanh_alpha: 1.,
      },
-     meta_learning: MetaLearningGene {
+     MetaLearningGene {
          innovation_number: "MTL01".to_string(),
          learning_rate: 0.01,
          learning_threshold: 0.5,
      },
-    };
+    );
 
     pub static ref TOPOLOGY_GENE_EXAMPLE: TopologyGene = TopologyGene {
             innovation_number: "h01".to_string(),
@@ -64,9 +51,8 @@ lazy_static! {
             active: true,
     };
 
-    pub static ref GENOME_EXAMPLE2: EneCode =  EneCode {
-     neuron_id: ez_input(vec!["input_1", "N1", "N2", "output_1"]),
-     topology: vec![
+    pub static ref GENOME_EXAMPLE2: EneCode =  EneCode::new (
+     vec![
          TopologyGene {
              innovation_number: "input_1".to_string(),
              pin: NeuronType::In,
@@ -97,18 +83,18 @@ lazy_static! {
          },
          // ... more TopologyGene
      ],
-     neuronal_props: NeuronalPropertiesGene {
+     NeuronalPropertiesGene {
          innovation_number: "NP01".to_string(),
          tau: 0.9,
          homeostatic_force: 0.1,
          tanh_alpha: 1.,
      },
-     meta_learning: MetaLearningGene {
+     MetaLearningGene {
          innovation_number: "MTL01".to_string(),
          learning_rate: 0.01,
          learning_threshold: 0.5,
      },
-    };
+    );
 
     pub static ref META_GENE_EXAMPLE: MetaLearningGene = MetaLearningGene {
             innovation_number: "mtg01".to_string(),
@@ -123,9 +109,8 @@ lazy_static! {
             tanh_alpha: 1.,
     };
 
-    pub static ref XOR_GENOME: EneCode = EneCode {
-        neuron_id: ez_input(vec!["i01", "i02", "D", "E"]),
-        topology: vec![
+    pub static ref XOR_GENOME: EneCode = EneCode::new (
+        vec![
             TopologyGene {
                 innovation_number: "i01".to_string(),
                 pin: NeuronType::In,
@@ -143,34 +128,54 @@ lazy_static! {
             },
 
             TopologyGene {
-                innovation_number: "D".to_string(),
+                innovation_number: "A".to_string(),
                 pin: NeuronType::Hidden,
-                inputs: hash_em(vec!["i01", "i02"], vec![0.2, 0.3]),
+                inputs: hash_em(vec!["i01", "i02"], vec![0., 0.]),
                 genetic_bias: 0.,
                 active: true,
             },
-
             TopologyGene {
-                innovation_number: "E".to_string(),
+                innovation_number: "B".to_string(),
+                pin: NeuronType::Hidden,
+                inputs: hash_em(vec!["i01", "i02"], vec![0., 0.]),
+                genetic_bias: 0.,
+                active: true,
+            },
+            TopologyGene {
+                innovation_number: "C".to_string(),
+                pin: NeuronType::Hidden,
+                inputs: hash_em(vec!["A", "B"], vec![0., 0.]),
+                genetic_bias: 0.,
+                active: true,
+            },
+            TopologyGene {
+                innovation_number: "D".to_string(),
+                pin: NeuronType::Hidden,
+                inputs: hash_em(vec!["A", "B"], vec![0., 0.]),
+                genetic_bias: 0.,
+                active: true,
+            },
+            TopologyGene {
+                innovation_number: "XOR".to_string(),
                 pin: NeuronType::Out,
-                inputs: hash_em(vec!["i01", "i02", "D"], vec![-0.1, 0.3, 0.4]),
+                inputs: hash_em(vec!["C", "D"], vec![0., 0.]),
                 genetic_bias: 0.,
                 active: true,
             },
         ],
-        neuronal_props: NeuronalPropertiesGene {
+        NeuronalPropertiesGene {
             innovation_number: "p01".to_string(),
             tau: 0.,
             homeostatic_force: 0.,
             tanh_alpha: 1.,
         },
-        meta_learning: MetaLearningGene {
+        MetaLearningGene {
             innovation_number: "m01".to_string(),
             learning_rate: 0.001,
             learning_threshold: 0.5,
         }
 
-    };
+    );
 
 }
 

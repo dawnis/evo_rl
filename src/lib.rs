@@ -4,8 +4,26 @@ pub mod graph;
 pub mod doctest;
 pub mod population;
 
+use std::collections::HashMap;
 use polars::prelude::*;
 use std::path::PathBuf;
+
+pub fn setup_logger() {
+    pretty_env_logger::try_init().ok();
+}
+
+pub fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {
+    let mut hm: HashMap<String, f32> = HashMap::new();
+    for (inn_number, weight) in names.iter().zip(weights.iter()) {
+        hm.insert(String::from(*inn_number), *weight);
+    }
+
+    hm
+}
+
+pub fn ez_input(names: Vec<&str>) -> Vec<String> {
+    names.iter().map(|&n| String::from(n)).collect()
+}
 
 pub fn dataframe_from_csv(file_path: PathBuf) -> PolarsResult<(DataFrame, DataFrame)> {
 
