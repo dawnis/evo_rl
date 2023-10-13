@@ -98,7 +98,12 @@ impl Population {
         // Given selected parents, mate in pairs until the population size is fulfilled
         let num_parents = parental_ids.len();
         let mut rng = rand::thread_rng();
-        for _idx in 0..self.size {
+
+        let mate_attempt_limit = self.size as f32 * 1.5;
+
+        let mut n_mate_attempts = 0;
+
+        while offspring.len() < self.size {
             let a1 = rng.gen_range(0..num_parents);
             let partner_list: Vec<&usize> = parental_ids.iter().filter(|&&p| p != a1).collect();
 
@@ -111,6 +116,12 @@ impl Population {
             match offspring_nn {
                 Ok(nn) => offspring.push(nn),
                 Err(e) => println!("Recombination failed: {:#?}", e),
+            }
+
+            n_mate_attempts += 1;
+
+            if n_mate_attempts > mate_attempt_limit as i32 {
+                panic!("Offspring mating has exceeded 50% failure rate.");
             }
         }
 
@@ -178,7 +189,14 @@ mod tests {
 
 
     #[test]
-    fn test_reproduction() {
+    fn test_generate_offspring() {
+        let genome = GENOME_EXAMPLE.clone();
+        let population_test = Population::new(genome, 10, 0.1);
+        let parent_id_vector = vec![0, 1, 3, 5];
+
+        let offspring_vec = population_test.generate_offspring(parent_id_vector);
+
+        assert_eq!(offspring_vec.len(), 10);
     }
 
     #[test]
