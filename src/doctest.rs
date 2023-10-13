@@ -128,17 +128,37 @@ lazy_static! {
             },
 
             TopologyGene {
-                innovation_number: "D".to_string(),
+                innovation_number: "A".to_string(),
                 pin: NeuronType::Hidden,
-                inputs: hash_em(vec!["i01", "i02"], vec![0.2, 0.3]),
+                inputs: hash_em(vec!["i01", "i02"], vec![0., 0.]),
                 genetic_bias: 0.,
                 active: true,
             },
-
             TopologyGene {
-                innovation_number: "E".to_string(),
+                innovation_number: "B".to_string(),
+                pin: NeuronType::Hidden,
+                inputs: hash_em(vec!["i01", "i02"], vec![0., 0.]),
+                genetic_bias: 0.,
+                active: true,
+            },
+            TopologyGene {
+                innovation_number: "C".to_string(),
+                pin: NeuronType::Hidden,
+                inputs: hash_em(vec!["A", "B"], vec![0., 0.]),
+                genetic_bias: 0.,
+                active: true,
+            },
+            TopologyGene {
+                innovation_number: "D".to_string(),
+                pin: NeuronType::Hidden,
+                inputs: hash_em(vec!["A", "B"], vec![0., 0.]),
+                genetic_bias: 0.,
+                active: true,
+            },
+            TopologyGene {
+                innovation_number: "XOR".to_string(),
                 pin: NeuronType::Out,
-                inputs: hash_em(vec!["i01", "i02", "D"], vec![-0.1, 0.3, 0.4]),
+                inputs: hash_em(vec!["C", "D"], vec![0., 0.]),
                 genetic_bias: 0.,
                 active: true,
             },
