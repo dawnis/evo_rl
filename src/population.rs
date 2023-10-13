@@ -17,7 +17,7 @@ struct Population {
     pub size: usize,
     pub mutation_rate: f32,
     pub generation: usize,
-    pub fitness_criterion: f32,
+    pub population_fitness: f32,
     survival_rate: f32,
     agent_fitness: Vec<f32>,
 }
@@ -39,13 +39,13 @@ impl Population {
             mutation_rate, 
             size: population_size,
             generation: 0,
-            fitness_criterion: 0.,
+            population_fitness: 0.,
             survival_rate: 0.8,
             agent_fitness: Vec::new(),
         }
     }
 
-    fn evaluate_fitness<T: FitnessFunction>(&mut self, f: T) {
+    fn evaluate_fitness<T: FitnessFunction>(&mut self, f: &T) {
         let fitness_vector: Vec<f32> = self.agents.iter().map(|x| f.fitness(x)).collect();
         self.agent_fitness = fitness_vector;
     }
@@ -128,7 +128,27 @@ impl Population {
         offspring
     }
 
-    fn run_generation(&mut self) ->  bool {
+    pub fn evolve<T:FitnessFunction>(&mut self, fitness_eval: T, iterations_max: usize, max_fitness_criterion: f32) ->  bool {
+        //reset generation value
+        self.generation = 0;
+
+        while self.generation < iterations_max {
+            self.evaluate_fitness(&fitness_eval);
+
+            // Select same population size, but use SUS to select according to fitness
+            let selection = self.selection(self.size);
+
+            let offspring = self.generate_offspring(selection);
+
+            self.agents = offspring;
+            self.population_fitness = self.agent_fitness.iter().sum::<f32>() / self.size as f32;
+            self.generation += 1;
+
+            if self.population_fitness > max_fitness_criterion {
+                break;
+            }
+
+        }
         false
     }
 
@@ -160,7 +180,7 @@ mod tests {
         let genome = GENOME_EXAMPLE.clone();
         let mut population_test = Population::new(genome, 125, 0.1);
 
-        population_test.evaluate_fitness(TestFitnessObject {} );
+        population_test.evaluate_fitness(&TestFitnessObject {} );
 
         assert_eq!(population_test.agent_fitness.iter().sum::<f32>(), 125.);
     }
