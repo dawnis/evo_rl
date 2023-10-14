@@ -165,7 +165,7 @@ impl Population {
             //TODO: Create configuration struct to set how often/fast to decrease rates
             if self.generation % 50 == 0 {
                 self.mutation_rate *= 0.50;
-                self.mutation_effect_sd *= 0.10;
+                self.mutation_effect_sd *= 0.50;
             }
 
             info!("Observing population fitness {} on generation {} with max of {}", self.population_fitness, self.generation, population_max);
@@ -248,7 +248,7 @@ mod tests {
         setup_logger();
 
         let genome = XOR_GENOME.clone();
-        let mut population = Population::new(genome, 200, 0.2, 0.05);
+        let mut population = Population::new(genome, 200, 0.1, 0.4);
 
         struct XorEvaluation {
             pub fitness_begin: f32
