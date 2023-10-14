@@ -6,7 +6,12 @@ use na::DVector;
 use rand::prelude::*;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
+use crate::{relu, sigmoid};
 
+//TODO:
+//1. Add Relu as a nonlinearity for hidden layer in XOR
+//2. Specify using NeuronType for the moment
+//3. Add hyperparameters to control how fast mutation effects scale.
 
 //// `Nn` is a struct that defines an Artificial Neuron.
 /// 
@@ -123,8 +128,11 @@ impl Nn{
     }
 
     fn nonlinearity(&self, z: &f32) -> f32 {
-        //using hyperboilc tangent function with parameter alpha
-        (z * self.tanh_alpha).tanh()
+        // Use relu on hidden layers, tanh on output
+        match self.neuron_type {
+         NeuronType::Hidden => relu(z),
+         _ => (z * self.tanh_alpha).tanh()
+        }
     }
 
 

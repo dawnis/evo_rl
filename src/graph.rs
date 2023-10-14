@@ -128,7 +128,7 @@ impl NeuralNetwork {
         for edge_index in self.graph.edge_indices() {
             if rng.gen::<f32>() < epsilon {
                 let new_weight: f32 = self.graph[edge_index] + normal.sample(rng);
-                self.graph[edge_index] = if new_weight > 0. {new_weight} else {0.};
+                self.graph[edge_index] = new_weight;
             }
 
         }
