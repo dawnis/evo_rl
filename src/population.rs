@@ -161,7 +161,8 @@ impl Population {
             }
 
             if self.generation % 50 == 0 {
-                self.mutation_rate *= 0.9;
+                self.mutation_rate *= 0.90;
+                self.mutation_effect_sd *= 0.2;
             }
 
             info!("Observing population fitness {} on generation {} of evolution", self.population_fitness, self.generation);
@@ -282,8 +283,8 @@ mod tests {
 
         let evaluation_function = XorEvaluation::new();
 
-        population.evolve(&evaluation_function, 800, 3.8);
-        assert!(population.population_fitness >= 3.6);
+        population.evolve(&evaluation_function, 400, 3.8);
+        assert!(population.population_fitness >= 3.7);
     }
 
 }

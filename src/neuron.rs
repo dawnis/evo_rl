@@ -175,6 +175,13 @@ mod tests {
 
         assert_eq!(neuron.activation_level, 17.);
         assert_eq!(neuron.output_value(), (17_f32).tanh());
+
+        //multiple runs of the same neuron with 0 tau should produce the same value
+        //in the absence of synaptic learning
+
+        neuron.propagate(12_f32);
+        assert_eq!(neuron.activation_level, 17.);
+        assert_eq!(neuron.output_value(), (17_f32).tanh());
     }
 
     #[test]
