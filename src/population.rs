@@ -17,6 +17,7 @@ struct Population {
     pub agents: Vec<NeuralNetwork>,
     pub size: usize,
     pub mutation_rate: f32,
+    pub mutation_effect_sd: f32,
     pub generation: usize,
     pub population_fitness: f32,
     survival_rate: f32,
@@ -32,13 +33,14 @@ impl Population {
             let mut agent = NeuralNetwork::new(genome_base.clone());
             agent.initialize();
             // Random initialization of the population of all parameters
-            agent.mutate(1.);
+            agent.mutate(1., 1.);
             agent_vector.push(agent.transfer());
         }
 
         Population {
             agents: agent_vector,
             mutation_rate, 
+            mutation_effect_sd: 0.1,
             size: population_size,
             generation: 0,
             population_fitness: 0.,
@@ -147,7 +149,7 @@ impl Population {
             let mut offspring = self.generate_offspring(selection);
 
             for agent in offspring.iter_mut() {
-                agent.mutate(self.mutation_rate);
+                agent.mutate(self.mutation_rate, self.mutation_effect_sd);
             }
 
             self.agents = offspring;
@@ -156,6 +158,10 @@ impl Population {
 
             if self.population_fitness > max_fitness_criterion {
                 break;
+            }
+
+            if self.generation % 50 == 0 {
+                self.mutation_rate *= 0.9;
             }
 
             info!("Observing population fitness {} on generation {} of evolution", self.population_fitness, self.generation);
@@ -276,8 +282,8 @@ mod tests {
 
         let evaluation_function = XorEvaluation::new();
 
-        population.evolve(&evaluation_function, 100, 3.2);
-        assert!(population.population_fitness >= 3.0);
+        population.evolve(&evaluation_function, 800, 3.8);
+        assert!(population.population_fitness >= 3.6);
     }
 
 }

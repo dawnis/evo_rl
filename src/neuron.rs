@@ -101,9 +101,9 @@ impl Nn{
     }
 
     //mutation of Nn struct
-    pub fn mutate<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
+    pub fn mutate<R: Rng>(&mut self, rng: &mut R, epsilon: f32, sd: f32) {
         //bias mutation
-        let normal = Normal::new(0., 0.1).unwrap();
+        let normal = Normal::new(0., sd).unwrap();
         if rng.gen::<f32>() < epsilon {
             let updated_bias = self.bias + normal.sample(rng);
             self.bias = updated_bias;
@@ -116,7 +116,8 @@ impl Nn{
     }
 
     fn fwd(&mut self, impulse: f32) {
-        self.activation_level = self.activation_level * (-self.tau).exp() + impulse + self.bias;
+        self.activation_level = self.activation_level - self.activation_level*(-self.tau).exp();
+        self.activation_level += impulse + self.bias;
         //self.learn?
         debug!("Activation level for neuron {} set at {} after impulse {}", self.id, self.activation_level, impulse);
     }
@@ -189,7 +190,7 @@ mod tests {
 
         let seed = [17; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
-        neuron.mutate(&mut rng, 1.);
+        neuron.mutate(&mut rng, 1., 0.1);
 
         assert_ne!(neuron.bias, 5.);
     }

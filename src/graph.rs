@@ -95,10 +95,10 @@ impl NeuralNetwork {
     }
     
     /// Run mutation for this network
-    pub fn mutate(&mut self, mutation_rate: f32) {
+    pub fn mutate(&mut self, mutation_rate: f32, mutation_sd: f32) {
         let mut rng = rand::thread_rng();
-        self.mutate_synapses(&mut rng, mutation_rate);
-        self.mutate_nn(&mut rng, mutation_rate);
+        self.mutate_synapses(&mut rng, mutation_rate, mutation_sd);
+        self.mutate_nn(&mut rng, mutation_rate, mutation_sd);
         let new_enecode = self.read_current_enecode();
         self.update_genome(new_enecode);
     }
@@ -114,17 +114,17 @@ impl NeuralNetwork {
     }
 
     /// Mutates properties in the Nn struct
-    fn mutate_nn<R: Rng>(&mut self, rng: &mut R, mutation_rate: f32) {
+    fn mutate_nn<R: Rng>(&mut self, rng: &mut R, mutation_rate: f32, sd: f32) {
         for nn in self.node_identity_map.keys() {
             let node = self.node_identity_map[nn];
-            self.graph[node].mutate(rng, mutation_rate);
+            self.graph[node].mutate(rng, mutation_rate, sd);
         }
     }
 
     /// Mutates connections in the network given the current mutation rate
-    fn mutate_synapses<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
+    fn mutate_synapses<R: Rng>(&mut self, rng: &mut R, epsilon: f32, sd: f32) {
         //synaptic mutation
-        let normal = Normal::new(0., 0.1).unwrap();
+        let normal = Normal::new(0., sd).unwrap();
         for edge_index in self.graph.edge_indices() {
             if rng.gen::<f32>() < epsilon {
                 let new_weight: f32 = self.graph[edge_index] + normal.sample(rng);
@@ -283,7 +283,7 @@ mod tests {
         let seed = [0; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
 
-        network_example.mutate_synapses(&mut rng, epsilon);
+        network_example.mutate_synapses(&mut rng, epsilon, 0.1);
 
         let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
 
@@ -309,7 +309,7 @@ mod tests {
 
         let epsilon: f32 = 1.;
 
-        network_example.mutate(epsilon);
+        network_example.mutate(epsilon, 0.1);
 
         let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
 
