@@ -10,6 +10,11 @@ The main evolutionary algorithm in this libary is inspired by the NEAT (K.O. Sta
 * Topology is non-fixed and selectable via evolution [planned].
 * Neurons are stateful.
 
+## Running Tests
+
+### Verbose
+ RUST_LOG=[debug/info] cargo test -- --nocapture
+
 ## Dev Log
 
 Please stay tuned for video Dev Logs describing the development of this library!

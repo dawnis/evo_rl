@@ -6,7 +6,12 @@ use na::DVector;
 use rand::prelude::*;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
+use crate::{relu, sigmoid};
 
+//TODO:
+//1. Add Relu as a nonlinearity for hidden layer in XOR
+//2. Specify using NeuronType for the moment
+//3. Add hyperparameters to control how fast mutation effects scale.
 
 //// `Nn` is a struct that defines an Artificial Neuron.
 /// 
@@ -101,9 +106,9 @@ impl Nn{
     }
 
     //mutation of Nn struct
-    pub fn mutate<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
+    pub fn mutate<R: Rng>(&mut self, rng: &mut R, epsilon: f32, sd: f32) {
         //bias mutation
-        let normal = Normal::new(0., 0.1).unwrap();
+        let normal = Normal::new(0., sd).unwrap();
         if rng.gen::<f32>() < epsilon {
             let updated_bias = self.bias + normal.sample(rng);
             self.bias = updated_bias;
@@ -116,14 +121,18 @@ impl Nn{
     }
 
     fn fwd(&mut self, impulse: f32) {
-        self.activation_level = self.activation_level * (-self.tau).exp() + impulse + self.bias;
+        self.activation_level = self.activation_level - self.activation_level*(-self.tau).exp();
+        self.activation_level += impulse + self.bias;
         //self.learn?
         debug!("Activation level for neuron {} set at {} after impulse {}", self.id, self.activation_level, impulse);
     }
 
     fn nonlinearity(&self, z: &f32) -> f32 {
-        //using hyperboilc tangent function with parameter alpha
-        (z * self.tanh_alpha).tanh()
+        // Use relu on hidden layers, tanh on output
+        match self.neuron_type {
+         NeuronType::Hidden => relu(z),
+         _ => (z * self.tanh_alpha).tanh()
+        }
     }
 
 
@@ -173,7 +182,14 @@ mod tests {
         neuron.propagate(12_f32);
 
         assert_eq!(neuron.activation_level, 17.);
-        assert_eq!(neuron.output_value(), (17_f32).tanh());
+        assert_eq!(neuron.output_value(), relu(&17.));
+
+        //multiple runs of the same neuron with 0 tau should produce the same value
+        //in the absence of synaptic learning
+
+        neuron.propagate(12_f32);
+        assert_eq!(neuron.activation_level, 17.);
+        assert_eq!(neuron.output_value(), relu(&17.));
     }
 
     #[test]
@@ -189,7 +205,7 @@ mod tests {
 
         let seed = [17; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
-        neuron.mutate(&mut rng, 1.);
+        neuron.mutate(&mut rng, 1., 0.1);
 
         assert_ne!(neuron.bias, 5.);
     }

@@ -7,6 +7,7 @@ pub mod population;
 use std::collections::HashMap;
 use polars::prelude::*;
 use std::path::PathBuf;
+use std::f32::consts::E;
 
 pub fn setup_logger() {
     pretty_env_logger::try_init().ok();
@@ -23,6 +24,18 @@ pub fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {
 
 pub fn ez_input(names: Vec<&str>) -> Vec<String> {
     names.iter().map(|&n| String::from(n)).collect()
+}
+
+//Thank you Akshay Ballal for sigmoid and relu
+pub fn sigmoid(z: &f32) -> f32 {
+    1.0 / (1.0 + E.powf(-z))
+}
+
+pub fn relu(z: &f32) -> f32 {
+    match *z > 0.0 {
+        true => *z,
+        false => 0.0,
+    }
 }
 
 pub fn dataframe_from_csv(file_path: PathBuf) -> PolarsResult<(DataFrame, DataFrame)> {
