@@ -1,4 +1,5 @@
 use log::*;
+use crate::increment_innovation_number;
 use crate::neuron::Nn;
 use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use rand::prelude::*;
@@ -134,6 +135,28 @@ impl NeuralNetwork {
         }
     }
 
+    ///TODO: Remove edge is not needed as we can prune connections close to zero every few
+    ///generations
+    /// Or, perhaps homeostatic rules can be used to determine neuronal survival? 
+
+    /// Mutates the topology of the network by either adding a new neuron or connection
+    fn mutate_topology<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
+    }
+
+    /// adds an edge of random weight between two neurons
+    fn add_new_edge(&mut self, n1: String, n2: String) {
+    }
+
+    /// duplicates neuron with given innovation number and adds it as a child 
+    fn duplicate_neuron(&mut self, innovation_number: &String) {
+        let parent_identity = self.node_identity_map[innovation_number];
+        let mut neuron_daughter = self.graph[parent_identity].clone();
+        let daughter_innovation_number = increment_innovation_number(innovation_number);
+        neuron_daughter.id = daughter_innovation_number.clone();
+        let node = self.graph.add_node(neuron_daughter);
+        self.node_identity_map.entry(daughter_innovation_number).or_insert(node);
+    }
+    
     //transfer ownership
     pub fn transfer(self) -> Self {
         self

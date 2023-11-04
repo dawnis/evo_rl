@@ -26,6 +26,11 @@ pub fn ez_input(names: Vec<&str>) -> Vec<String> {
     names.iter().map(|&n| String::from(n)).collect()
 }
 
+/// Increments the ID of a neuron when creating a daughter
+pub fn increment_innovation_number(neuron_id: &String) -> String {
+    String::from("dummy")
+}
+
 //Thank you Akshay Ballal for sigmoid and relu
 pub fn sigmoid(z: &f32) -> f32 {
     1.0 / (1.0 + E.powf(-z))
