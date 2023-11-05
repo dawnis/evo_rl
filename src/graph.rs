@@ -151,7 +151,7 @@ impl NeuralNetwork {
     fn duplicate_neuron(&mut self, innovation_number: &String) {
         let parent_identity = self.node_identity_map[innovation_number];
         let mut neuron_daughter = self.graph[parent_identity].clone();
-        let daughter_innovation_number = increment_innovation_number(innovation_number);
+        let daughter_innovation_number = increment_innovation_number(innovation_number, Vec::new());
         neuron_daughter.id = daughter_innovation_number.clone();
         let node = self.graph.add_node(neuron_daughter);
         self.node_identity_map.entry(daughter_innovation_number).or_insert(node);
