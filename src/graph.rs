@@ -155,6 +155,12 @@ impl NeuralNetwork {
         for nn in hidden_units{
             if rng.gen::<f32>() < epsilon.powf(2.0) {
                 self.duplicate_neuron(nn);
+                continue;
+            }
+
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                self.remove_neuron(nn);
+                continue;
             }
 
             if rng.gen::<f32>() < epsilon.powf(2.0) {
@@ -162,6 +168,15 @@ impl NeuralNetwork {
                     let downstream_node = self.node_identity_map[neuron_id];
                     self.add_new_edge(nn, downstream_node);
                 }
+                continue;
+            }
+
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
+                    let downstream_node = self.node_identity_map[neuron_id];
+                    self.remove_edge(nn, downstream_node);
+                }
+                continue;
             }
 
         }
@@ -181,15 +196,37 @@ impl NeuralNetwork {
 
         //first see if the opposite direction edge is present
         match self.graph.find_edge(n2_node, n1_node) {
-            Some(idx) => return,
+            Some(_idx) => return,
             None => {},
         };
         
         //then add an edge in the right direction if non exists
         match self.graph.find_edge(n1_node, n2_node) {
-            Some(idx) => return,
+            Some(_idx) => return,
             None => self.graph.add_edge(n1_node, n2_node, 0.),
         };
+    }
+
+    /// removes an edge between two neurons
+    fn remove_edge(&mut self, n1_node: NodeIndex, n2_node: NodeIndex) {
+        //cannot remove from self
+        if n1_node == n2_node {return};
+
+        //don't remove edges from inputs
+        match self.graph[n1_node].neuron_type {
+            NeuronType::In => return,
+            _ => {},
+        }
+
+        if let Some(idx) = self.graph.find_edge(n1_node, n2_node) {
+            match self.graph.remove_edge(idx) {
+                Some(_f) => {debug!("Removing edge between {} and {}", self.graph[n1_node].id, self.graph[n2_node].id);
+                            return
+                }
+                _ => {},
+            }
+        }
+        
     }
 
     /// duplicates neuron with given innovation number and adds it as a child 
@@ -217,6 +254,19 @@ impl NeuralNetwork {
         self.node_identity_map.entry(daughter_innovation_number).or_insert(daughter_node);
 
         self.graph.add_edge(neuron, daughter_node, 0.);
+    }
+
+    /// remove a neuron from the graph and update node identity map
+    fn remove_neuron(&mut self, neuron: NodeIndex) {
+        let neuron_id = self.graph[neuron].id.clone();
+        self.graph.remove_node(neuron);
+
+        self.node_identity_map.remove(&neuron_id);
+
+        for node_index in self.graph.node_indices() {
+            let node_entry = self.graph[node_index].id.clone();
+            self.node_identity_map.insert(node_entry, node_index);
+        }
     }
     
     //transfer ownership

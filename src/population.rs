@@ -300,7 +300,7 @@ mod tests {
         impl XorEvaluation {
             pub fn new() -> Self {
                 XorEvaluation {
-                    fitness_begin: 4.0
+                    fitness_begin: 6.0
                 }
             }
 
@@ -309,6 +309,9 @@ mod tests {
         impl FitnessEvaluation for XorEvaluation {
             fn fitness(&self, agent: &mut NeuralNetwork) -> f32 {
                 let mut fitness_evaluation = self.fitness_begin;
+                //complexity penalty
+                let complexity = agent.node_identity_map.len() as f32;
+                let complexity_penalty = 0.01 * complexity;
 
                 for bit1 in 0..2 {
                     for bit2 in 0..2 {
@@ -323,15 +326,15 @@ mod tests {
                     }
                 }
 
-                fitness_evaluation
+                fitness_evaluation - complexity_penalty
             }
         }
         let ef = XorEvaluation::new();
         
         let config = PopulationConfig::new(ef, 50, 0.50, 0.50, Some(13));
 
-        population.evolve(config, 400, 3.8);
-        assert!(population.population_fitness >= 3.7);
+        population.evolve(config, 400, 5.8);
+        assert!(population.population_fitness >= 5.2);
     }
 
 }
