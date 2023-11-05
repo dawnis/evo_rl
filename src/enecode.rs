@@ -1,10 +1,10 @@
 use log::*;
 use rand::Rng;
 use rand::seq::IteratorRandom;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
-use crate::graph::NeuralNetwork;
+use crate::{graph::NeuralNetwork, sort_genes_by_neuron_type};
 
 /// `EneCode` encapsulates the genetic blueprint for constructing an entire neural network.
 ///
@@ -117,27 +117,7 @@ impl EneCode {
     ///innovation number
     pub fn new(topology: Vec<TopologyGene>, neuronal_props: NeuronalPropertiesGene, meta_learning: MetaLearningGene) -> Self {
 
-        let mut topology_s: Vec<TopologyGene> = Vec::new();
-        let mut topology_hidden: Vec<TopologyGene> = Vec::new();
-        let mut topology_outputs: Vec<TopologyGene> = Vec::new();
-
-        for tg in topology.into_iter() {
-
-            match tg.pin {
-                NeuronType::In => topology_s.push(tg),
-                NeuronType::Hidden => topology_hidden.push(tg),
-                NeuronType::Out => topology_outputs.push(tg),
-            };
-
-        }
-
-        topology_s.sort_by_key(|tg| tg.innovation_number.clone() );
-        topology_hidden.sort_by_key(|tg| tg.innovation_number.clone() );
-        topology_outputs.sort_by_key(|tg| tg.innovation_number.clone() );
-
-        topology_s.extend(topology_hidden.drain(..));
-        topology_s.extend(topology_outputs.drain(..));
-
+        let topology_s: Vec<TopologyGene> = sort_genes_by_neuron_type(topology);
         let neuron_id: Vec<String> = topology_s.iter().map(|tg| String::from(&tg.innovation_number)).collect();
 
         EneCode {
@@ -166,13 +146,32 @@ impl EneCode {
     }
 
     pub fn recombine<R: Rng>(&self, rng: &mut R, other_genome: &EneCode) -> Result<EneCode, RecombinationError> {
-        // first, determine number of crossover points
-        let max_crossover_points = self.neuron_id.len() / 2;
+        // determine the number of crossover points by seeing how many genes have matching
+        // innovation number
+        let self_innovation_nums: HashSet<_> = self.neuron_id.iter().collect();
+        let other_innovation_nums: HashSet<_> = other_genome.neuron_id.iter().collect();
+        let homology_genes: Vec<_> = self_innovation_nums.intersection(&other_innovation_nums).collect();
+        let crossover_topology_vec: Vec<TopologyGene> = self.topology.iter().filter(|x| homology_genes.contains(&&&x.innovation_number))
+                                                             .map(|tg| tg.clone()).collect();
+
+        let sorted_crosover_topology: Vec<_> = sort_genes_by_neuron_type(crossover_topology_vec);
+        let sorted_homology_genes: Vec<&String> = sorted_crosover_topology.iter().map(|tg| &tg.innovation_number).collect();
+
+        // determine number of crossover points or return a recombination error if none exists
+        if sorted_homology_genes.len() == 0 {
+            return Err(RecombinationError::CrossoverMatchError);
+        } 
+
+        let max_crossover_points = if sorted_homology_genes.len() == 1 {
+            1
+        } else { 
+            sorted_homology_genes.len() / 2
+        };
 
         let n_crossover = if max_crossover_points < 2 { 1 } else {rng.gen_range(1..=max_crossover_points) };
 
-        // second determine location of each crossover point
-        let mut crossover_points: Vec<usize> = (0..self.neuron_id.len() - 1).choose_multiple(rng, n_crossover);
+        // determine location of each crossover point
+        let mut crossover_points: Vec<usize> = (0..sorted_homology_genes.len() - 1).choose_multiple(rng, n_crossover);
         crossover_points.sort();
         debug!("Crossover points {:#?}", crossover_points);
 
@@ -190,7 +189,7 @@ impl EneCode {
         let mut use_self = true;
 
         for point in crossover_points {
-            let innovation_number = &self.neuron_id[point];
+            let innovation_number = sorted_homology_genes[point];
 
             let mut self_genes: Vec<TopologyGene> = Vec::new();
             while let Some(sg) = own_copy.pop() {
@@ -350,7 +349,7 @@ mod tests {
     use rand::SeedableRng;
     use rand::rngs::StdRng;
     use assert_matches::assert_matches;
-    use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2};
+    use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2, XOR_GENOME_MINIMAL};
     use crate::setup_logger;
 
     #[test]
@@ -423,6 +422,22 @@ mod tests {
     }
 
     #[test]
+    fn test_recombine_missing_gene_long_genome() {
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        let ene1 = XOR_GENOME.clone();
+        let ene2 = XOR_GENOME_MINIMAL.clone();
+
+        let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
+        let crossover_genes: Vec<&String> = recombined.neuron_id.iter().filter(|&id| id == "A").collect();
+
+        assert!(crossover_genes.len() == 1);
+        assert_eq!(crossover_genes[0], "A");
+    }
+
+
+    #[test]
     fn test_recombine_same_topology_different_genetic_bias() {
         setup_logger();
 
@@ -442,12 +457,7 @@ mod tests {
                 }
             ).collect();
 
-        let ene2 = EneCode {
-            neuron_id: new_topology_genome.iter().map(|tg| String::from(&tg.innovation_number)).collect(),
-            topology: new_topology_genome,
-            neuronal_props: ene2_base.neuronal_props,
-            meta_learning: ene2_base.meta_learning,
-        };
+        let ene2: EneCode = EneCode::new(new_topology_genome, ene2_base.neuronal_props, ene2_base.meta_learning);
 
         let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
         let recombined_genetic_bias: Vec<_> = recombined.topology.iter().map(|tg| tg.genetic_bias).collect();
