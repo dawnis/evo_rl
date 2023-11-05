@@ -4,6 +4,7 @@ pub mod graph;
 pub mod doctest;
 pub mod population;
 
+use enecode::{TopologyGene, NeuronType};
 use log::*;
 use std::collections::HashMap;
 use polars::prelude::*;
@@ -25,6 +26,32 @@ pub fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {
 
 pub fn ez_input(names: Vec<&str>) -> Vec<String> {
     names.iter().map(|&n| String::from(n)).collect()
+}
+
+/// Sorts topology gene in the order of Input, Hidden, Output and then by innovation number
+pub fn sort_genes_by_neuron_type(input_topology_vector: Vec<TopologyGene>) -> Vec<TopologyGene> {
+        let mut topology_s: Vec<TopologyGene> = Vec::new();
+        let mut topology_hidden: Vec<TopologyGene> = Vec::new();
+        let mut topology_outputs: Vec<TopologyGene> = Vec::new();
+
+        for tg in input_topology_vector.into_iter() {
+
+            match tg.pin {
+                NeuronType::In => topology_s.push(tg),
+                NeuronType::Hidden => topology_hidden.push(tg),
+                NeuronType::Out => topology_outputs.push(tg),
+            };
+
+        }
+
+        topology_s.sort_by_key(|tg| tg.innovation_number.clone() );
+        topology_hidden.sort_by_key(|tg| tg.innovation_number.clone() );
+        topology_outputs.sort_by_key(|tg| tg.innovation_number.clone() );
+
+        topology_s.extend(topology_hidden.drain(..));
+        topology_s.extend(topology_outputs.drain(..));
+        topology_s
+    
 }
 
 /// Increments the ID of a neuron when creating a daughter
@@ -57,7 +84,7 @@ pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String
 
             let ldn: i32 = match largest_daughter_number[1..].parse() {
                 Ok(n) => n,
-                Err(e) => panic!("Failed to parse string daughter number"),
+                Err(_e) => panic!("Failed to parse string daughter number"),
             };
 
             let mut daughter_id = String::from(previous_lineage);
