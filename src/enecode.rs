@@ -349,7 +349,7 @@ mod tests {
     use rand::SeedableRng;
     use rand::rngs::StdRng;
     use assert_matches::assert_matches;
-    use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2};
+    use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2, XOR_GENOME_MINIMAL};
     use crate::setup_logger;
 
     #[test]
@@ -420,6 +420,22 @@ mod tests {
 
         assert_eq!(recombined.neuron_id.len(), ene1.neuron_id.len());
     }
+
+    #[test]
+    fn test_recombine_missing_gene_long_genome() {
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        let ene1 = XOR_GENOME.clone();
+        let ene2 = XOR_GENOME_MINIMAL.clone();
+
+        let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
+        let crossover_genes: Vec<&String> = recombined.neuron_id.iter().filter(|&id| id == "A").collect();
+
+        assert!(crossover_genes.len() == 1);
+        assert_eq!(crossover_genes[0], "A");
+    }
+
 
     #[test]
     fn test_recombine_same_topology_different_genetic_bias() {

@@ -109,6 +109,52 @@ lazy_static! {
             tanh_alpha: 1.,
     };
 
+    pub static ref XOR_GENOME_MINIMAL: EneCode = EneCode::new (
+        vec![
+            TopologyGene {
+                innovation_number: "i01".to_string(),
+                pin: NeuronType::In,
+                inputs: HashMap::new(),
+                genetic_bias: 0.,
+                active: true,
+            },
+
+            TopologyGene {
+                innovation_number: "i02".to_string(),
+                pin: NeuronType::In,
+                inputs: HashMap::new(),
+                genetic_bias: 0.,
+                active: true,
+            },
+
+            TopologyGene {
+                innovation_number: "A".to_string(),
+                pin: NeuronType::Hidden,
+                inputs: hash_em(vec!["i01", "i02"], vec![0., 0.]),
+                genetic_bias: 0.,
+                active: true,
+            },
+            TopologyGene {
+                innovation_number: "XOR".to_string(),
+                pin: NeuronType::Out,
+                inputs: hash_em(vec!["A"], vec![0.]),
+                genetic_bias: 0.,
+                active: true,
+            },
+        ],
+        NeuronalPropertiesGene {
+            innovation_number: "p01".to_string(),
+            tau: 0.,
+            homeostatic_force: 0.,
+            tanh_alpha: 1.,
+        },
+        MetaLearningGene {
+            innovation_number: "m01".to_string(),
+            learning_rate: 0.001,
+            learning_threshold: 0.5,
+        }
+    );
+
     pub static ref XOR_GENOME: EneCode = EneCode::new (
         vec![
             TopologyGene {
