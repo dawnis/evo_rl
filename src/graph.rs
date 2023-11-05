@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::Bfs;
+use nalgebra::DVector;
 use thiserror::Error;
 
 /// `NeuralNetwork` is a struct that represents a directed graph
@@ -150,11 +151,30 @@ impl NeuralNetwork {
     /// duplicates neuron with given innovation number and adds it as a child 
     fn duplicate_neuron(&mut self, innovation_number: &String) {
         let parent_identity = self.node_identity_map[innovation_number];
+
+        let node_children = self.graph.neighbors_directed(parent_identity, petgraph::Direction::Outgoing);
+
+        let mut node_children_id: Vec<&String> = Vec::new();
+        for cnode in node_children {
+            match self.graph[cnode].neuron_type {
+                NeuronType::Hidden => node_children_id.push(&self.graph[cnode].id),
+                _ => continue,
+            }
+        }
+
         let mut neuron_daughter = self.graph[parent_identity].clone();
-        let daughter_innovation_number = increment_innovation_number(innovation_number, Vec::new());
+        let daughter_innovation_number = increment_innovation_number(innovation_number, node_children_id);
+
+        //initialize with zero weights and bias having a connection to parent
         neuron_daughter.id = daughter_innovation_number.clone();
+        neuron_daughter.inputs = vec![String::from(innovation_number.clone())];
+        neuron_daughter.bias = 0.;
+        neuron_daughter.synaptic_weights = DVector::from_vec(vec![0.]);
+
         let node = self.graph.add_node(neuron_daughter);
         self.node_identity_map.entry(daughter_innovation_number).or_insert(node);
+
+        self.graph.add_edge(parent_identity, node, 0.);
     }
     
     //transfer ownership
@@ -373,5 +393,31 @@ mod tests {
         let recombined_nodes: Vec<_> = recombined.node_identity_map.keys().map(|k| String::from(k)).collect();
 
         assert!(recombined_nodes.len() == 4);
+    }
+
+    #[test]
+    fn test_duplicate_neuron() {
+        setup_logger();
+
+        let ene1 = GENOME_EXAMPLE.clone();
+        let mut network1 = NeuralNetwork::new(ene1);
+        network1.initialize();
+
+        let inn_name = String::from("N1");
+        network1.duplicate_neuron(&inn_name);
+
+        let added_node = network1.node_identity_map["N1-1"];
+
+        let parent_nodes = network1.graph.neighbors_directed(added_node, petgraph::Direction::Incoming);
+
+        let mut parent_node_vec: Vec<String> = Vec::new();
+        for pnode in parent_nodes {
+            parent_node_vec.push(String::from(network1.graph[pnode].id.clone()));
+        }
+
+        assert_eq!(parent_node_vec.len(), 1);
+        assert_eq!(parent_node_vec[0], String::from("N1"));
+
+
     }
 }
