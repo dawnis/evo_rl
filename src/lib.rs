@@ -31,15 +31,26 @@ pub fn ez_input(names: Vec<&str>) -> Vec<String> {
 pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String>) -> String {
     //innovation numbers will be of the form alphanumeric string (progenitor code) followed by
     //numeric (lineage code)
+    //First, identify the progenitor code
+    
+    let progenitor_code: &str = match neuron_id.find("-") {
+        Some(idx) => {
+        let (pc, _tail) = neuron_id.split_at(idx);
+        pc
+        },
+        None => neuron_id
+    };
+
+    let daughter_ids_progenitor: Vec<&&String> = daughter_ids.iter().filter(|&id| id.starts_with(progenitor_code)).collect();
 
     //If it is the first daughter, add -1 to the end of the string
-    if daughter_ids.len() == 0 {
+    if daughter_ids_progenitor.len() == 0 {
         let mut daughter_id = neuron_id.clone();
         daughter_id.push_str("-1");
         daughter_id
     } else {
         //else increment the largest daughter
-        let largest_daughter_id = daughter_ids.iter().max().unwrap();
+        let largest_daughter_id = daughter_ids_progenitor.iter().max().unwrap();
 
         if let Some(idx) = largest_daughter_id.rfind("-") {
             let (previous_lineage, largest_daughter_number) = largest_daughter_id.split_at(idx);
@@ -56,6 +67,7 @@ pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String
             daughter_id.to_string()
 
         } else {
+            debug!("Problem with parsing string largest_daughter_id {} while duplicating {}", largest_daughter_id, neuron_id);
             panic!("Attempted to parse daughter innovation number but found invalid code");
         }
     }
@@ -111,8 +123,9 @@ mod tests {
         let innovation_number2 = String::from("a0-2-2");
         let a03 = String::from("a0-2-2-1");
         let a04 = String::from("a0-2-2-20");
+        let b01 = String::from("B0-10000");
 
-        let daughters3 = vec![&a03, &a04];
+        let daughters3 = vec![&a03, &a04, &b01];
         let d3 = increment_innovation_number(&innovation_number2, daughters3);
 
         assert_eq!(d3, String::from("a0-2-2-21"));

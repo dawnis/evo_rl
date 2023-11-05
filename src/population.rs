@@ -156,7 +156,7 @@ impl Population {
 
             match offspring_nn {
                 Ok(nn) => offspring.push(nn),
-                Err(e) => println!("Recombination failed: {:#?}", e),
+                Err(e) => debug!("Recombination failed: {:#?}", e),
             }
 
             n_mate_attempts += 1;

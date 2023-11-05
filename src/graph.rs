@@ -76,10 +76,18 @@ impl NeuralNetwork {
         //Build Edges
         for daughter in &self.genome.neuron_id[..] {
             let nge = NeuronalEneCode::new_from_enecode(daughter.clone(), &self.genome);
+
+            // It's possible to recombine genes in such a way that a topology gene refers to a
+            //non-existent parent
             for parent in nge.topology.inputs.keys() {
-                self.graph.add_edge(self.node_identity_map[parent], 
-                                    self.node_identity_map[daughter], 
-                                    nge.topology.inputs[parent]);
+                if self.node_identity_map.contains_key(parent) {
+                    self.graph.add_edge(self.node_identity_map[parent], 
+                                        self.node_identity_map[daughter], 
+                                        nge.topology.inputs[parent]);
+                } else {
+                    continue
+                };
+
             }
         }
 
@@ -101,6 +109,7 @@ impl NeuralNetwork {
         let mut rng = rand::thread_rng();
         self.mutate_synapses(&mut rng, mutation_rate, mutation_sd);
         self.mutate_nn(&mut rng, mutation_rate, mutation_sd);
+        self.mutate_topology(&mut rng, mutation_rate);
         let new_enecode = self.read_current_enecode();
         self.update_genome(new_enecode);
     }
@@ -142,20 +151,50 @@ impl NeuralNetwork {
 
     /// Mutates the topology of the network by either adding a new neuron or connection
     fn mutate_topology<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
+        let hidden_units = self.fetch_neuron_list_by_type(NeuronType::Hidden);
+        for nn in hidden_units{
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                self.duplicate_neuron(nn);
+            }
+
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
+                    let downstream_node = self.node_identity_map[neuron_id];
+                    self.add_new_edge(nn, downstream_node);
+                }
+            }
+
+        }
     }
 
-    /// adds an edge of random weight between two neurons
-    fn add_new_edge(&mut self, n1: &String, n2: &String) {
-        let n1_node = self.node_identity_map[n1];
-        let n2_node = self.node_identity_map[n2];
-        self.graph.add_edge(n1_node, n2_node, 0.);
+    /// adds an edge of zero weight between two neurons if none exists in either direction
+    fn add_new_edge(&mut self, n1_node: NodeIndex, n2_node: NodeIndex) {
+
+        //cannot connect to self
+        if n1_node == n2_node {return};
+
+        //don't add edges outgoing to inputs
+        match self.graph[n2_node].neuron_type {
+            NeuronType::In => return,
+            _ => {},
+        }
+
+        //first see if the opposite direction edge is present
+        match self.graph.find_edge(n2_node, n1_node) {
+            Some(idx) => return,
+            None => {},
+        };
+        
+        //then add an edge in the right direction if non exists
+        match self.graph.find_edge(n1_node, n2_node) {
+            Some(idx) => return,
+            None => self.graph.add_edge(n1_node, n2_node, 0.),
+        };
     }
 
     /// duplicates neuron with given innovation number and adds it as a child 
-    fn duplicate_neuron(&mut self, innovation_number: &String) {
-        let parent_identity = self.node_identity_map[innovation_number];
-
-        let node_children = self.graph.neighbors_directed(parent_identity, petgraph::Direction::Outgoing);
+    fn duplicate_neuron(&mut self, neuron: NodeIndex) {
+        let node_children = self.graph.neighbors_directed(neuron, petgraph::Direction::Outgoing);
 
         let mut node_children_id: Vec<&String> = Vec::new();
         for cnode in node_children {
@@ -165,19 +204,19 @@ impl NeuralNetwork {
             }
         }
 
-        let mut neuron_daughter = self.graph[parent_identity].clone();
-        let daughter_innovation_number = increment_innovation_number(innovation_number, node_children_id);
+        let mut neuron_daughter = self.graph[neuron].clone();
+        let daughter_innovation_number = increment_innovation_number(&self.graph[neuron].id, node_children_id);
 
         //initialize with zero weights and bias having a connection to parent
         neuron_daughter.id = daughter_innovation_number.clone();
-        neuron_daughter.inputs = vec![String::from(innovation_number.clone())];
+        neuron_daughter.inputs = vec![self.graph[neuron].id.clone()];
         neuron_daughter.bias = 0.;
         neuron_daughter.synaptic_weights = DVector::from_vec(vec![0.]);
 
-        let node = self.graph.add_node(neuron_daughter);
-        self.node_identity_map.entry(daughter_innovation_number).or_insert(node);
+        let daughter_node = self.graph.add_node(neuron_daughter);
+        self.node_identity_map.entry(daughter_innovation_number).or_insert(daughter_node);
 
-        self.graph.add_edge(parent_identity, node, 0.);
+        self.graph.add_edge(neuron, daughter_node, 0.);
     }
     
     //transfer ownership
@@ -343,6 +382,33 @@ mod tests {
     }
 
     #[test]
+    fn test_mutate_topology() {
+        let genome = GENOME_EXAMPLE.clone();
+        let mut network_example = NeuralNetwork::new(genome);
+        network_example.initialize();
+
+        let epsilon: f32 = 1.;
+
+        let seed = [0; 32]; // Fixed seed for determinism
+        let mut rng = StdRng::from_seed(seed);
+
+        network_example.mutate_topology(&mut rng, epsilon);
+
+        let added_node = network_example.node_identity_map["N1-1"];
+
+        let parent_nodes = network_example.graph.neighbors_directed(added_node, petgraph::Direction::Incoming);
+
+        let mut parent_node_vec: Vec<String> = Vec::new();
+        for pnode in parent_nodes {
+            parent_node_vec.push(String::from(network_example.graph[pnode].id.clone()));
+        }
+
+        assert_eq!(parent_node_vec.len(), 1);
+        assert_eq!(parent_node_vec[0], String::from("N1"));
+    }
+
+
+    #[test]
     fn test_mutate() {
         let genome = GENOME_EXAMPLE.clone();
         let mut network_example = NeuralNetwork::new(genome);
@@ -406,8 +472,7 @@ mod tests {
         let mut network1 = NeuralNetwork::new(ene1);
         network1.initialize();
 
-        let inn_name = String::from("N1");
-        network1.duplicate_neuron(&inn_name);
+        network1.duplicate_neuron(network1.node_identity_map["N1"]);
 
         let added_node = network1.node_identity_map["N1-1"];
 
@@ -430,10 +495,10 @@ mod tests {
         let mut network = NeuralNetwork::new(xor);
         network.initialize();
 
-        let a = String::from("A");
-        let b = String::from("B");
+        let a = network.node_identity_map["A"];
+        let b = network.node_identity_map["B"];
 
-        network.add_new_edge(&a, &b);
+        network.add_new_edge(a, b);
 
         let bnode = network.node_identity_map["B"];
 
@@ -443,8 +508,8 @@ mod tests {
             parent_node_vec.push(String::from(network.graph[pnode].id.clone()));
         }
 
-        let filt_list: Vec<&String> = parent_node_vec.iter().filter(|&x| x == &a).collect();
+        let filt_list: Vec<&String> = parent_node_vec.iter().filter(|&x| x == "A").collect();
 
-        assert_eq!(filt_list[0], &a);
+        assert_eq!(filt_list[0], "A");
     }
 }
