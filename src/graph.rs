@@ -105,11 +105,11 @@ impl NeuralNetwork {
     }
     
     /// Run mutation for this network
-    pub fn mutate(&mut self, mutation_rate: f32, mutation_sd: f32) {
+    pub fn mutate(&mut self, mutation_rate: f32, mutation_sd: f32, topology_mutation_rate: f32) {
         let mut rng = rand::thread_rng();
         self.mutate_synapses(&mut rng, mutation_rate, mutation_sd);
         self.mutate_nn(&mut rng, mutation_rate, mutation_sd);
-        self.mutate_topology(&mut rng, mutation_rate);
+        self.mutate_topology(&mut rng, topology_mutation_rate);
         let new_enecode = self.read_current_enecode();
         self.update_genome(new_enecode);
     }
@@ -421,7 +421,7 @@ mod tests {
 
         let epsilon: f32 = 1.;
 
-        network_example.mutate(epsilon, 0.1);
+        network_example.mutate(epsilon, 0.1, 0.);
 
         let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
 
