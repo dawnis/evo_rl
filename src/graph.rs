@@ -145,7 +145,10 @@ impl NeuralNetwork {
     }
 
     /// adds an edge of random weight between two neurons
-    fn add_new_edge(&mut self, n1: String, n2: String) {
+    fn add_new_edge(&mut self, n1: &String, n2: &String) {
+        let n1_node = self.node_identity_map[n1];
+        let n2_node = self.node_identity_map[n2];
+        self.graph.add_edge(n1_node, n2_node, 0.);
     }
 
     /// duplicates neuron with given innovation number and adds it as a child 
@@ -270,7 +273,7 @@ pub enum GraphConstructionError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{doctest::{GENOME_EXAMPLE, GENOME_EXAMPLE2}, setup_logger};
+    use crate::{doctest::{GENOME_EXAMPLE, GENOME_EXAMPLE2, XOR_GENOME}, setup_logger};
 
     #[test]
     fn test_initialize() {
@@ -417,7 +420,31 @@ mod tests {
 
         assert_eq!(parent_node_vec.len(), 1);
         assert_eq!(parent_node_vec[0], String::from("N1"));
+    }
 
+    #[test]
+    fn test_add_new_edge() {
+        setup_logger();
 
+        let xor = XOR_GENOME.clone();
+        let mut network = NeuralNetwork::new(xor);
+        network.initialize();
+
+        let a = String::from("A");
+        let b = String::from("B");
+
+        network.add_new_edge(&a, &b);
+
+        let bnode = network.node_identity_map["B"];
+
+        let parent_nodes = network.graph.neighbors_directed(bnode, petgraph::Direction::Incoming);
+        let mut parent_node_vec: Vec<String> = Vec::new();
+        for pnode in parent_nodes {
+            parent_node_vec.push(String::from(network.graph[pnode].id.clone()));
+        }
+
+        let filt_list: Vec<&String> = parent_node_vec.iter().filter(|&x| x == &a).collect();
+
+        assert_eq!(filt_list[0], &a);
     }
 }
