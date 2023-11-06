@@ -323,6 +323,7 @@ mod tests {
         assert_eq!(offspring_vec.len(), 10);
     }
 
+    #[test]
     fn test_evolve_xor_predefined_topology() {
         setup_logger();
 
