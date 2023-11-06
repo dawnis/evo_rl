@@ -151,10 +151,38 @@ impl NeuralNetwork {
 
     /// Mutates the topology of the network by either adding a new neuron or connection
     fn mutate_topology<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
+
+        let input_units = self.fetch_neuron_list_by_type(NeuronType::In);
+
+        for inp in input_units {
+
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
+                    let downstream_node = self.node_identity_map[neuron_id];
+                    self.add_new_edge(inp, downstream_node);
+                }
+                continue;
+            }
+
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
+                    let downstream_node = self.node_identity_map[neuron_id];
+                    self.remove_edge(inp, downstream_node);
+                }
+                continue;
+            }
+        }
+
         let hidden_units = self.fetch_neuron_list_by_type(NeuronType::Hidden);
-        for nn in hidden_units{
+        for nn in hidden_units {
             if rng.gen::<f32>() < epsilon.powf(2.0) {
                 self.duplicate_neuron(nn);
+                break;
+            }
+
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                self.remove_neuron(nn);
+                break;
             }
 
             if rng.gen::<f32>() < epsilon.powf(2.0) {
@@ -162,6 +190,15 @@ impl NeuralNetwork {
                     let downstream_node = self.node_identity_map[neuron_id];
                     self.add_new_edge(nn, downstream_node);
                 }
+                continue;
+            }
+
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
+                    let downstream_node = self.node_identity_map[neuron_id];
+                    self.remove_edge(nn, downstream_node);
+                }
+                continue;
             }
 
         }
@@ -181,15 +218,37 @@ impl NeuralNetwork {
 
         //first see if the opposite direction edge is present
         match self.graph.find_edge(n2_node, n1_node) {
-            Some(idx) => return,
+            Some(_idx) => return,
             None => {},
         };
         
         //then add an edge in the right direction if non exists
         match self.graph.find_edge(n1_node, n2_node) {
-            Some(idx) => return,
+            Some(_idx) => return,
             None => self.graph.add_edge(n1_node, n2_node, 0.),
         };
+    }
+
+    /// removes an edge between two neurons
+    fn remove_edge(&mut self, n1_node: NodeIndex, n2_node: NodeIndex) {
+        //cannot remove from self
+        if n1_node == n2_node {return};
+
+        //don't remove edges from inputs
+        match self.graph[n1_node].neuron_type {
+            NeuronType::In => return,
+            _ => {},
+        }
+
+        if let Some(idx) = self.graph.find_edge(n1_node, n2_node) {
+            match self.graph.remove_edge(idx) {
+                Some(_f) => {debug!("Removing edge between {} and {}", self.graph[n1_node].id, self.graph[n2_node].id);
+                            return
+                }
+                _ => {},
+            }
+        }
+        
     }
 
     /// duplicates neuron with given innovation number and adds it as a child 
@@ -218,6 +277,24 @@ impl NeuralNetwork {
 
         self.graph.add_edge(neuron, daughter_node, 0.);
     }
+
+    /// remove a neuron from the graph and update node identity map
+    fn remove_neuron(&mut self, neuron: NodeIndex) {
+        let neuron_id = self.graph[neuron].id.clone();
+        self.graph.remove_node(neuron);
+
+        let value = self.node_identity_map.remove(&neuron_id);
+
+        match value {
+            Some(idx) => debug!("Successfully removed node {} at index {:?}", neuron_id, idx),
+            None => error!("Node for {} was not there to be removed!", neuron_id),
+        }
+
+        for node_index in self.graph.node_indices() {
+            let node_entry = self.graph[node_index].id.clone();
+            self.node_identity_map.insert(node_entry, node_index);
+        }
+    }
     
     //transfer ownership
     pub fn transfer(self) -> Self {
@@ -226,9 +303,9 @@ impl NeuralNetwork {
 
     /// Helper function to identify neurons of a paritcular type and returns them sorted by id
     fn fetch_neuron_list_by_type(&self, neurontype: NeuronType) -> Vec<NodeIndex> {
-        let mut neuron_ids: Vec<String> = self.genome.topology.iter()
-            .filter(|x| x.pin == neurontype)
-            .map(|tg| String::from(&tg.innovation_number))
+        let mut neuron_ids: Vec<String> = self.graph.node_indices().into_iter()
+            .filter(|&n| self.graph[n].neuron_type == neurontype)
+            .map(|n| self.graph[n].id.clone())
             .collect();
 
         neuron_ids.sort();
@@ -511,5 +588,26 @@ mod tests {
         let filt_list: Vec<&String> = parent_node_vec.iter().filter(|&x| x == "A").collect();
 
         assert_eq!(filt_list[0], "A");
+    }
+
+    #[test]
+    fn test_remove_neuron() {
+        setup_logger();
+
+        let xor = XOR_GENOME.clone();
+        let mut network = NeuralNetwork::new(xor);
+        network.initialize();
+
+        let b = network.node_identity_map["B"];
+        network.remove_neuron(b);
+        assert!(!network.node_identity_map.contains_key("B"));
+
+        let mut graph_nodes: Vec<String> = Vec::new();
+
+        for node in network.graph.node_indices() {
+            graph_nodes.push(network.graph[node].id.clone());
+        }
+
+        assert!(!graph_nodes.contains(&String::from("B")));
     }
 }

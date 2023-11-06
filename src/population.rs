@@ -216,8 +216,45 @@ impl Population {
 mod tests {
     use super::*;
     use crate::graph::NeuralNetwork;
-    use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME};
+    use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
     use crate::setup_logger;
+
+    struct XorEvaluation {
+        pub fitness_begin: f32
+    }
+
+    impl XorEvaluation {
+        pub fn new() -> Self {
+            XorEvaluation {
+                fitness_begin: 6.0
+            }
+        }
+
+    }
+
+    impl FitnessEvaluation for XorEvaluation {
+        fn fitness(&self, agent: &mut NeuralNetwork) -> f32 {
+            let mut fitness_evaluation = self.fitness_begin;
+            //complexity penalty
+            let complexity = agent.node_identity_map.len() as f32;
+            let complexity_penalty = 0.01 * complexity;
+
+            for bit1 in 0..2 {
+                for bit2 in 0..2 {
+                    agent.fwd(vec![bit1 as f32, bit2 as f32]);
+                    let network_output = agent.fetch_network_output();
+
+                    let xor_true = (bit1 > 0) ^ (bit2 > 0);
+                    let xor_true_float: f32 = if xor_true {1.} else {0.};
+
+                    fitness_evaluation -= (xor_true_float - network_output[0]).powf(2.);
+
+                }
+            }
+
+            fitness_evaluation - complexity_penalty
+        }
+    }
 
     #[test]
     fn test_create_population() {
@@ -287,51 +324,33 @@ mod tests {
     }
 
     #[test]
-    fn test_evolve() {
+    fn test_evolve_xor_predefined_topology() {
         setup_logger();
 
         let genome = XOR_GENOME.clone();
         let mut population = Population::new(genome, 200, 0.1, 0.4, 0.01);
 
-        struct XorEvaluation {
-            pub fitness_begin: f32
-        }
-
-        impl XorEvaluation {
-            pub fn new() -> Self {
-                XorEvaluation {
-                    fitness_begin: 4.0
-                }
-            }
-
-        }
-
-        impl FitnessEvaluation for XorEvaluation {
-            fn fitness(&self, agent: &mut NeuralNetwork) -> f32 {
-                let mut fitness_evaluation = self.fitness_begin;
-
-                for bit1 in 0..2 {
-                    for bit2 in 0..2 {
-                        agent.fwd(vec![bit1 as f32, bit2 as f32]);
-                        let network_output = agent.fetch_network_output();
-
-                        let xor_true = (bit1 > 0) ^ (bit2 > 0);
-                        let xor_true_float: f32 = if xor_true {1.} else {0.};
-
-                        fitness_evaluation -= (xor_true_float - network_output[0]).powf(2.);
-
-                    }
-                }
-
-                fitness_evaluation
-            }
-        }
         let ef = XorEvaluation::new();
         
         let config = PopulationConfig::new(ef, 50, 0.50, 0.50, Some(13));
 
-        population.evolve(config, 400, 3.8);
-        assert!(population.population_fitness >= 3.7);
+        population.evolve(config, 400, 5.8);
+        assert!(population.population_fitness >= 5.2);
+    }
+
+    #[test]
+    fn test_evolve_xor_minimal_topology() {
+        setup_logger();
+
+        let genome = XOR_GENOME_MINIMAL.clone();
+        let mut population = Population::new(genome, 200, 0.2, 0.4, 0.4);
+
+        let ef = XorEvaluation::new();
+        
+        let config = PopulationConfig::new(ef, 200, 0.50, 0.50, Some(17));
+
+        population.evolve(config, 1000, 5.8);
+        assert!(population.population_fitness >= 5.2);
     }
 
 }

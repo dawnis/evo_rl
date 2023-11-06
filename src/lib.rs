@@ -68,7 +68,8 @@ pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String
         None => neuron_id
     };
 
-    let daughter_ids_progenitor: Vec<&&String> = daughter_ids.iter().filter(|&id| id.starts_with(progenitor_code)).collect();
+    let daughter_ids_progenitor: Vec<&&String> = daughter_ids.iter().filter(|&id| id.starts_with(progenitor_code))
+                                                                    .filter(|&id| id != &progenitor_code).collect();
 
     //If it is the first daughter, add -1 to the end of the string
     if daughter_ids_progenitor.len() == 0 {
