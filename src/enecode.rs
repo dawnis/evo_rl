@@ -1,3 +1,7 @@
+//! Module which specifies the genetic encoding for neural network and neural properties. The
+//! genetic encoding is used to reconstruct neural network graphs and for recombination of
+//! offspring.
+
 use log::*;
 use rand::Rng;
 use rand::seq::IteratorRandom;
@@ -145,6 +149,14 @@ impl EneCode {
         gene
     }
 
+    /// Performs genetic recombination during mating
+    ///
+    /// # Arguments
+    /// * `rng` - thread_rng 
+    /// * `other_genome` - the enecode of the partner to recombine with
+    ///
+    /// # Returns
+    /// A Result<EneCode, RecombinationError>
     pub fn recombine<R: Rng>(&self, rng: &mut R, other_genome: &EneCode) -> Result<EneCode, RecombinationError> {
         // determine the number of crossover points by seeing how many genes have matching
         // innovation number
@@ -270,6 +282,7 @@ pub struct NeuronalEneCode<'a> {
     pub meta: &'a MetaLearningGene,
 }
 
+/// Generates a more specific genetic handle for use in initializing a neuron
 impl<'a> NeuronalEneCode<'a> {
     pub fn new_from_enecode(neuron_id: String, genome: &'a EneCode) -> Self {
         let topology = genome.topology_gene(&neuron_id);

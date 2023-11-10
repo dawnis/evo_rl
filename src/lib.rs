@@ -1,3 +1,10 @@
+//! Evo RL is a machine learning library built on the concept of Neuroevolution -- evolving an
+//! architecture for neural networks as opposed to pre-specifying it. This library is best suited
+//! for Reinforcement Learning tasks in which a reward (or fitness) score can be assigned to
+//! agents.
+//! 
+//! Evo RL is a WIP and is in the pre-alpha state. 
+
 pub mod neuron;
 pub mod enecode;
 pub mod graph;
@@ -7,14 +14,15 @@ pub mod population;
 use enecode::{TopologyGene, NeuronType};
 use log::*;
 use std::collections::HashMap;
-use polars::prelude::*;
-use std::path::PathBuf;
 use std::f32::consts::E;
 
+///Utility function for logging unit tests
 pub fn setup_logger() {
     pretty_env_logger::try_init().ok();
 }
 
+
+/// Convenience function to easily create maps when specifying gene strings. 
 pub fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {
     let mut hm: HashMap<String, f32> = HashMap::new();
     for (inn_number, weight) in names.iter().zip(weights.iter()) {
@@ -24,6 +32,7 @@ pub fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {
     hm
 }
 
+/// Convenience function to easily create a vector of owned Strings. 
 pub fn ez_input(names: Vec<&str>) -> Vec<String> {
     names.iter().map(|&n| String::from(n)).collect()
 }
@@ -101,33 +110,18 @@ pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String
     }
 }
 
-//Thank you Akshay Ballal for sigmoid and relu
+//Non-linearity functions. Thank yourAkshay Ballal for sigmoid and relu
 pub fn sigmoid(z: &f32) -> f32 {
     1.0 / (1.0 + E.powf(-z))
 }
 
+//Non-linearity functions. Thank yourAkshay Ballal for sigmoid and relu
 pub fn relu(z: &f32) -> f32 {
     match *z > 0.0 {
         true => *z,
         false => 0.0,
     }
 }
-
-pub fn dataframe_from_csv(file_path: PathBuf) -> PolarsResult<(DataFrame, DataFrame)> {
-
-    let data = CsvReader::from_path(file_path)?.has_header(true).finish()?;
-
-    let training_dataset = data.drop("y")?;
-    let training_labels = data.select(["y"])?;
-
-    return Ok((training_dataset, training_labels));
-
-}
-
-//pub fn array_from_dataframe(df: &DataFrame) -> Array2<f32> {
-// df.to_ndarray::<Float32Type>().unwrap().reversed_axes()
-//}
-//
 
 #[cfg(test)]
 mod tests {

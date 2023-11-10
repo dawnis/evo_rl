@@ -1,3 +1,5 @@
+//!This module focuses on implementing an evolutionary algorithm for neural network optimization. It uses Stochastic Universal Sampling (SUS) and Truncation for selection within a population of neural network agents.
+
 use rand::Rng;
 use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
@@ -5,17 +7,26 @@ use log::*;
 
 use crate::{graph::NeuralNetwork, enecode::EneCode};
 
-/// Population is the struct that contains the agents for selection and mediates the evolutionary
-/// algorithm. In this case we will use Stochastic Universal Sampling along with Truncation.
-///
-///
-
-trait FitnessEvaluation {
+///`FitnessEvaluation` is defines a trait for fitness evaluation of a neural network.
+///- **Method `fitness`**: Calculates and returns the fitness score of a given neural network agent. 
+///- **Parameters**: 
+///  - `agent`: A mutable reference to a `NeuralNetwork`.
+pub trait FitnessEvaluation {
     fn fitness(&self, agent: &mut NeuralNetwork) -> f32;
 }
 
-///Configuration for Population to Set Hyperparameters
-struct PopulationConfig<F: FitnessEvaluation> {
+/// `PopulationConfig` is a struct that configures `Population` for evolutionary selection.
+///- **Purpose**: Configuration struct for setting hyperparameters of a population.
+///- **Fields**:
+///  - `evaluator`: A fitness evaluator of type `F` that implements `FitnessEvaluation`.
+///  - `rng`: A boxed random number generator.
+///  - `epoch_size`: Size of an epoch.
+///  - `mutation_rate_scale_per_epoch`: Scaling factor for mutation rate per epoch.
+///  - `mutation_effect_scale_per_epoch`: Scaling factor for the effect of mutation per epoch.
+///- **Method `new`**: Constructs a new `PopulationConfig`.
+///- **Parameters**: 
+///  - `evaluator`, `epoch_size`, `mutation_rate_scale_per_epoch`, `mutation_effect_scale_per_epoch`, `rng_seed`.
+pub struct PopulationConfig<F: FitnessEvaluation> {
     evaluator: F, 
     rng: Box<dyn RngCore>,
     epoch_size: usize,
@@ -48,7 +59,20 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
     }
 }
 
-struct Population {
+///### `Population`
+///- **Purpose**: Represents a population in the evolutionary algorithm.
+///- **Fields**:
+///  - `agents`: A vector of `NeuralNetwork`.
+///  - `size`: Size of the population.
+///  - `topology_mutation_rate`, `mutation_rate`, `mutation_effect_sd`: Parameters for mutation.
+///  - `generation`: Current generation number.
+///  - `population_fitness`: Average fitness of the population.
+///  - `survival_rate`: Rate at which agents survive per generation.
+///  - `agent_fitness`: Vector storing fitness of each agent.
+///- **Method `new`**: Constructs a new `Population`.
+///- **Parameters**: 
+///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
+pub struct Population {
     pub agents: Vec<NeuralNetwork>,
     pub size: usize,
     pub topology_mutation_rate: f32,
@@ -86,18 +110,29 @@ impl Population {
         }
     }
 
+    ///### `evaluate_fitness`
+    ///- **Purpose**: Evaluates and updates the fitness of each agent in the population.
+    ///- **Parameters**:
+    ///  - `f`: A reference to an object implementing `FitnessEvaluation`.
     fn evaluate_fitness<T: FitnessEvaluation>(&mut self, f: &T) {
         let fitness_vector: Vec<f32> = self.agents.iter_mut().map(|x| f.fitness(x)).collect();
         self.agent_fitness = fitness_vector;
     }
 
+    ///### `selection`
+    ///- **Purpose**: Selects a subset of agents from the population for reproduction.
+    ///- **Parameters**:
+    ///  - `rng`: A mutable reference to a random number generator.
+    ///  - `n_select`: Number of agents to select.
     fn selection<R: Rng>(&self, rng: &mut R, n_select: usize) -> Vec<usize> {
         let truncated_population = self.truncate_population();
         self.stochastic_universal_sampling(rng, truncated_population, n_select)
     }
 
-    /// Implements stochastic universal sampling, an efficient algorithm related to Roulette Wheel
-    /// Selection for evolutionary aglorithms
+    ///### `stochastic_universal_sampling`
+    ///- **Purpose**: Implements SUS for efficient selection in evolutionary algorithms.
+    ///- **Parameters**:
+    ///  - `rng`, `sample`, `n_select`.
     fn stochastic_universal_sampling<R: Rng>(&self, rng: &mut R, sample: Vec<usize>, n_select: usize) -> Vec<usize> {
         let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agent_fitness[idx]).collect();
         let total_population_fitness: f32 = sample_fitness.iter().sum();
@@ -125,7 +160,9 @@ impl Population {
         selection
     }
 
-    ///Returns indices associated with truncated population
+    ///### `truncate_population`
+    ///- **Purpose**: Truncates the population based on survival rate.
+    ///- **Returns**: A vector of indices representing the surviving population.
     fn truncate_population(&self) -> Vec<usize> {
         let n_survival = (self.agents.len() as f32) * self.survival_rate;
         let mut fitness_pairing: Vec<_> = (0..self.agents.len()).zip(&self.agent_fitness).collect();
@@ -136,6 +173,11 @@ impl Population {
 
     }
 
+    ///### `generate_offspring`
+    ///- **Purpose**: Generates offspring from selected parents.
+    ///- **Parameters**:
+    ///  - `rng`: A mutable reference to a random number generator.
+    ///  - `parental_ids`: Vector of indices representing selected parents.
     fn generate_offspring<R: Rng>(&self, rng: &mut R, parental_ids: Vec<usize>) -> Vec<NeuralNetwork> {
         let mut offspring: Vec<NeuralNetwork> = Vec::new();
 
@@ -171,6 +213,12 @@ impl Population {
         offspring
     }
 
+    ///### `evolve`
+    ///- **Purpose**: Evolves the population over a number of generations.
+    ///- **Parameters**:
+    ///  - `pop_config`: Population configuration.
+    ///  - `iterations_max`: Maximum number of iterations.
+    ///  - `max_fitness_criterion`: Fitness threshold to halt evolution.
     pub fn evolve<F: FitnessEvaluation>(&mut self, pop_config: PopulationConfig<F>, iterations_max: usize, max_fitness_criterion: f32) {
         let mut rng = pop_config.rng;
 
@@ -213,6 +261,9 @@ impl Population {
 
 }
 
+///## Unit Tests
+///
+///Unit tests are provided to validate the functionality of `Population` methods, including creation, fitness evaluation, truncation, SUS, offspring generation, and the overall evolution process with different configurations.
 mod tests {
     use super::*;
     use crate::graph::NeuralNetwork;
