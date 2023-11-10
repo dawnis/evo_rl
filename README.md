@@ -6,10 +6,6 @@ Evo RL is a machine learning library built in Rust to explore the evolution of a
 
 The main evolutionary algorithm in this libary is inspired by the NEAT (K.O. Stanley and  R. Miikkulainen) and implements Stochastic Universal Sampling with Truncation as the selection mechanism. 
 
-## Current Biomemtic Features
-* Topology is non-fixed and selectable via evolution [planned].
-* Neurons are stateful.
-
 ## Running Tests
 
 ### Verbose
