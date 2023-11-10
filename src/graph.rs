@@ -1,3 +1,6 @@
+//! This module implements neural networks in the form of directed graphs (from `petgraph`).
+//! Evolutionary changes are projected onto the graph first before being encoded genetically.
+
 use log::*;
 use crate::increment_innovation_number;
 use crate::neuron::Nn;
@@ -144,10 +147,6 @@ impl NeuralNetwork {
 
         }
     }
-
-    ///TODO: Remove edge is not needed as we can prune connections close to zero every few
-    ///generations
-    /// Or, perhaps homeostatic rules can be used to determine neuronal survival? 
 
     /// Mutates the topology of the network by either adding a new neuron or connection
     fn mutate_topology<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {

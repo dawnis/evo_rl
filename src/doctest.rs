@@ -1,3 +1,5 @@
+//! This module contains constants and examples used in unit tests. 
+
 use crate::enecode::*;
 use crate::hash_em;
 use std::collections::HashMap;

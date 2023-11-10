@@ -1,3 +1,6 @@
+//! Module for the `neuron` struct which defines the individual unit of computation for the neural
+//! network. 
+
 use log::*;
 use nalgebra as na;
 use std::sync::Arc;
@@ -7,11 +10,6 @@ use rand::prelude::*;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use crate::{relu, sigmoid};
-
-//TODO:
-//1. Add Relu as a nonlinearity for hidden layer in XOR
-//2. Specify using NeuronType for the moment
-//3. Add hyperparameters to control how fast mutation effects scale.
 
 //// `Nn` is a struct that defines an Artificial Neuron.
 /// 
@@ -74,11 +72,6 @@ impl Nn{
     ///
     /// # Arguments
     /// * `input` -f32
-    ///
-    /// # Example
-    /// ```rust
-    /// // code example here
-    /// ```
     pub fn propagate(&mut self, input: f32) {
         match self.neuron_type {
             NeuronType::In => {
@@ -92,11 +85,6 @@ impl Nn{
     ///
     /// # Returns
     /// The output value as a floating-point number.
-    ///
-    /// # Example
-    /// ```rust
-    /// // code example here
-    /// ```
     pub fn output_value(&self) -> f32 {
         match self.neuron_type {
             NeuronType::In => self.activation_level,
@@ -105,7 +93,12 @@ impl Nn{
         }
     }
 
-    //mutation of Nn struct
+    /// Performs mutation on the neuron
+    ///
+    /// # Arguments
+    /// * `rng` - thread_rng
+    /// * `epsilon` - mutation rate
+    /// * `sd` - the standard deviation of a normal distribution used to sample changes
     pub fn mutate<R: Rng>(&mut self, rng: &mut R, epsilon: f32, sd: f32) {
         //bias mutation
         let normal = Normal::new(0., sd).unwrap();
