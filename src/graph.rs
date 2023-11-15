@@ -381,8 +381,15 @@ impl NeuralNetwork {
 
     /// Write the graph as a .dot file for visualization/inspection
     pub fn write_dot(&self, file_path: &str) {
-        let dot = Dot::new(&self.graph);
+        let node_label = |n: &NodeIndex| {
+            format!("label=\"{}\"", self.graph[*n].id)
+        };
+
+        let edge_attr = |_| String::new();
+
+        let dot = Dot::with_attr_getters(&self.graph, &[Config::NodeIndexLabel], &node_label, &edge_attr);
         let mut file = File::create(file_path).unwrap();
+
         writeln!(&mut file, "{:?}", dot).unwrap();
     }
 
