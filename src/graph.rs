@@ -8,8 +8,11 @@ use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use rand::prelude::*;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Write;
 use std::sync::Arc;
-use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::graph::{DiGraph, NodeIndex, EdgeReference};
+use petgraph::dot::{Dot, Config};
 use petgraph::visit::Bfs;
 use nalgebra::DVector;
 use thiserror::Error;
@@ -375,6 +378,23 @@ impl NeuralNetwork {
     pub fn fetch_network_output(&self) -> Vec<f32> {
         self.network_output.clone()
     }
+
+    /// Write the graph as a .dot file for visualization/inspection
+    pub fn write_dot(&self, file_path: &str) {
+        let node_label = |g: &DiGraph<Nn, f32>, node_ref: (NodeIndex, &Nn)| {
+            format!("label=\"{}\"", node_ref.1.id)
+        };
+
+        let edge_attr = |g: &DiGraph<Nn, f32>, edge_ref: EdgeReference<'_, f32>| -> String {
+        format!("label=\"{}\"", edge_ref.weight())
+        };
+
+        let dot = Dot::with_attr_getters(&self.graph, &[Config::NodeIndexLabel], &edge_attr, &node_label);
+        let mut file = File::create(file_path).unwrap();
+
+        writeln!(&mut file, "{:?}", dot).unwrap();
+    }
+
 
 
 }

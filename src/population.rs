@@ -27,18 +27,24 @@ pub trait FitnessEvaluation {
 ///- **Parameters**: 
 ///  - `evaluator`, `epoch_size`, `mutation_rate_scale_per_epoch`, `mutation_effect_scale_per_epoch`, `rng_seed`.
 pub struct PopulationConfig<F: FitnessEvaluation> {
+    project_name: String, 
+    project_directory: String,
     evaluator: F, 
     rng: Box<dyn RngCore>,
     epoch_size: usize,
     mutation_rate_scale_per_epoch: f32,
     mutation_effect_scale_per_epoch: f32,
+    visualize_best_agent: bool,
 }
 
 impl<F: FitnessEvaluation> PopulationConfig<F> {
-    pub fn new(evaluator: F, 
+    pub fn new(project_name: String,
+               home_directory: Option<String>,
+               evaluator: F, 
                epoch_size: usize, 
                mutation_rate_scale_per_epoch: f32, 
                mutation_effect_scale_per_epoch: f32,
+               visualize_best_agent: bool,
                rng_seed: Option<u8>) -> Self {
 
         let mut rng: Box<dyn RngCore> = match rng_seed {
@@ -49,12 +55,20 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
             None => Box::new(rand::thread_rng())
         };
 
+        let project_directory: String = match home_directory {
+            Some(dir) => dir,
+            None => String::from(""),
+        };
+
         PopulationConfig {
+            project_name,
+            project_directory,
             evaluator,
             rng,
             epoch_size,
             mutation_rate_scale_per_epoch,
             mutation_effect_scale_per_epoch,
+            visualize_best_agent,
         }
     }
 }
@@ -241,7 +255,13 @@ impl Population {
             self.population_fitness = self.agent_fitness.iter().sum::<f32>() / self.size as f32;
             self.generation += 1;
 
-            let population_max = self.agent_fitness.clone().into_iter().reduce(f32::max).unwrap();
+            let (best_agent_idx, population_max) = self.agent_fitness
+                                                       .clone()
+                                                       .into_iter()
+                                                       .enumerate()
+                                                       .fold((0, std::f32::MIN), |(idx_max, val_max), (idx, val) | {
+                                                            if val > val_max { (idx, val) } else { (idx_max, val_max) }
+                                                       });
 
             if self.population_fitness > max_fitness_criterion {
                 break;
@@ -251,6 +271,11 @@ impl Population {
                 self.mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
                 self.topology_mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
                 self.mutation_effect_sd *= pop_config.mutation_effect_scale_per_epoch;
+            }
+
+            if (self.generation % 10 == 0) & pop_config.visualize_best_agent {
+                let agent_path = format!("{}{}_{:04}.dot", pop_config.project_directory, pop_config.project_name, self.generation);
+                self.agents[best_agent_idx].write_dot(&agent_path);
             }
 
             info!("Observing population fitness {} on generation {} with max of {}", self.population_fitness, self.generation, population_max);
@@ -383,7 +408,7 @@ mod tests {
 
         let ef = XorEvaluation::new();
         
-        let config = PopulationConfig::new(ef, 50, 0.50, 0.50, Some(13));
+        let config = PopulationConfig::new("XOR_Predefined_Test".to_string(), None, ef, 50, 0.50, 0.50, false, Some(13));
 
         population.evolve(config, 400, 5.8);
         assert!(population.population_fitness >= 5.2);
@@ -397,8 +422,11 @@ mod tests {
         let mut population = Population::new(genome, 200, 0.2, 0.4, 0.4);
 
         let ef = XorEvaluation::new();
+
+        let project_name = "XOR_Test".to_string();
+        let project_directory = "agents/XORtest/".to_string();
         
-        let config = PopulationConfig::new(ef, 200, 0.50, 0.50, Some(17));
+        let config = PopulationConfig::new(project_name, Some(project_directory), ef, 200, 0.50, 0.50, false, Some(17));
 
         population.evolve(config, 1000, 5.8);
         assert!(population.population_fitness >= 5.2);
