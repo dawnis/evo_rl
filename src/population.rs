@@ -426,7 +426,7 @@ mod tests {
         let project_name = "XOR_Test".to_string();
         let project_directory = "agents/XORtest/".to_string();
         
-        let config = PopulationConfig::new(project_name, Some(project_directory), ef, 200, 0.50, 0.50, true, Some(17));
+        let config = PopulationConfig::new(project_name, Some(project_directory), ef, 200, 0.50, 0.50, false, Some(17));
 
         population.evolve(config, 1000, 5.8);
         assert!(population.population_fitness >= 5.2);
