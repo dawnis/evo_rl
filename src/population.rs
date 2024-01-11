@@ -4,6 +4,7 @@ use rand::Rng;
 use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
 use log::*;
+use thiserror::Error;
 
 use crate::{graph::NeuralNetwork, enecode::EneCode};
 
@@ -12,7 +13,7 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 ///- **Parameters**: 
 ///  - `agent`: A mutable reference to a `NeuralNetwork`.
 pub trait FitnessEvaluation {
-    fn fitness(&self, agent: &mut NeuralNetwork) -> f32;
+    fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError>;
 }
 
 /// `PopulationConfig` is a struct that configures `Population` for evolutionary selection.
@@ -35,6 +36,12 @@ pub struct PopulationConfig<F: FitnessEvaluation> {
     mutation_rate_scale_per_epoch: f32,
     mutation_effect_scale_per_epoch: f32,
     visualize_best_agent: bool,
+}
+
+#[derive(Debug, Error)]
+pub enum FitnessValueError{
+    #[error("Negative fitness values are not allowed!")]
+    NegativeFitnessError
 }
 
 impl<F: FitnessEvaluation> PopulationConfig<F> {
@@ -129,7 +136,7 @@ impl Population {
     ///- **Parameters**:
     ///  - `f`: A reference to an object implementing `FitnessEvaluation`.
     fn evaluate_fitness<T: FitnessEvaluation>(&mut self, f: &T) {
-        let fitness_vector: Vec<f32> = self.agents.iter_mut().map(|x| f.fitness(x)).collect();
+        let fitness_vector: Vec<f32> = self.agents.iter_mut().map(|x| f.fitness(x)).collect::<Result<Vec<f32>, FitnessValueError>>().unwrap();
         self.agent_fitness = fitness_vector;
     }
 
@@ -292,6 +299,8 @@ impl Population {
 mod tests {
     use super::*;
     use crate::graph::NeuralNetwork;
+    use crate::population::FitnessValueError;
+
     use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
     use crate::setup_logger;
 
@@ -302,14 +311,14 @@ mod tests {
     impl XorEvaluation {
         pub fn new() -> Self {
             XorEvaluation {
-                fitness_begin: 6.0
+                fitness_begin: 8.0
             }
         }
 
     }
 
     impl FitnessEvaluation for XorEvaluation {
-        fn fitness(&self, agent: &mut NeuralNetwork) -> f32 {
+        fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
             let complexity = agent.node_identity_map.len() as f32;
@@ -328,7 +337,15 @@ mod tests {
                 }
             }
 
-            fitness_evaluation - complexity_penalty
+            let fitness_value = fitness_evaluation - complexity_penalty;
+
+            if fitness_value < 0. {
+                Err(FitnessValueError::NegativeFitnessError)
+            } 
+            else {
+                Ok(fitness_value) 
+            }
+
         }
     }
 
@@ -346,8 +363,8 @@ mod tests {
         }
 
         impl FitnessEvaluation for TestFitnessObject {
-            fn fitness(&self, _agent: &mut NeuralNetwork) -> f32 {
-                1.
+            fn fitness(&self, _agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
+                Ok(1.)
             }
         }
 
