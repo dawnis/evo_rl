@@ -311,7 +311,7 @@ mod tests {
     impl XorEvaluation {
         pub fn new() -> Self {
             XorEvaluation {
-                fitness_begin: 8.0
+                fitness_begin: 6.0
             }
         }
 
@@ -337,7 +337,9 @@ mod tests {
                 }
             }
 
-            let fitness_value = fitness_evaluation - complexity_penalty;
+            let fitness_value = if fitness_evaluation > complexity_penalty {
+                fitness_evaluation - complexity_penalty }
+            else {0.};
 
             if fitness_value < 0. {
                 Err(FitnessValueError::NegativeFitnessError)
