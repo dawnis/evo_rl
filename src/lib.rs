@@ -10,6 +10,7 @@ pub mod enecode;
 pub mod graph;
 pub mod doctest;
 pub mod population;
+pub mod python_api;
 
 use enecode::{TopologyGene, NeuronType};
 use log::*;
