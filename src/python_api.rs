@@ -6,9 +6,25 @@ use crate::graph::NeuralNetwork;
 use crate::population::{Population, PopulationConfig, FitnessEvaluation, FitnessValueError};
 use crate::doctest::GENOME_EXAMPLE;
 
+/// Formats the sum of two numbers as string.
+#[pyfunction]
+fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
+    Ok((a + b).to_string())
+}
+
+/// A Python module implemented in Rust. The name of this function must match
+/// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
+/// import the module.
+#[pymodule]
+fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
+    Ok(())
+}
+
+/*
 //TODO: Population::new
 
-#[pyclass]
+//#[pyclass]
 /// Wrapper for Population
 struct PopulationApi {
     population: Population,
@@ -17,8 +33,21 @@ struct PopulationApi {
 
 #[pyclass]
 struct PythonEvaluationFunction {
-    pyevaluator: PyObject,
-    py: Python,
+    py_evaluator: PyObject,
+}
+
+//#[pymethods]
+impl PythonEvaluationFunction {
+    #[new]
+    fn new (py_evaluator: PyObject) {
+        if py_evaluator.as_ref(py).cast_as::<PyCallable>().is_ok() {
+            Ok( PythonEvaluationFunction { py_evaluator } )
+        } else {
+             Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Evaluation function is not allable",
+            ))
+        }
+    }
 }
 
 impl FitnessEvaluation for PythonEvaluationFunction {
@@ -63,7 +92,6 @@ impl PopulationApi {
 
 }
 
-//TODO: population config
-//TODO: Fitness eval loop
+    */
 
 
