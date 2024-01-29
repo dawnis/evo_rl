@@ -74,16 +74,36 @@ struct PopulationApi {
 #[pymethods]
 impl PopulationApi {
     #[new]
-    pub fn new(config: Py<PyDict>, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> PyResult<Self> {
+    pub fn new(pyconfig: Py<PyDict>) -> PyResult<Self> {
         let genome = XOR_GENOME_MINIMAL.clone();
-        let population = Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate);
 
-        Ok (
-        PopulationApi { 
+
+        Python::with_gil(|py| -> PyResult<()> {
+            let config: &PyDict = pyconfig.as_ref(py);
+            if let Some(size) = config.get_item("population_size")? {
+                let population_size: usize = size.extract()?;
+            }
+
+            if let Some(rate) = config.get_item("survival_rate")? {
+                let survival_rate: f32 = rate.extract()?;
+            }
+
+            if let Some(rate) = config.get_item("mutation_rate")? {
+                let mutation_rate: f32 = rate.extract()?;
+            }
+
+            if let Some(rate) = config.get_item("topology_mutation_rate")? {
+                let topology_mutation_rate: f32 = rate.extract()?;
+            }
+
+            Ok(())
+        });
+
+        let population = Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate);
+        Ok(PopulationApi {
             population,
-            config
-        }
-        )
+            config: pyconfig
+        })
     }
 
     //TODO: run xor_minimal_test as is from Python
