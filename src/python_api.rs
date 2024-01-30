@@ -78,28 +78,35 @@ impl PopulationApi {
         let genome = XOR_GENOME_MINIMAL.clone();
 
 
-        Python::with_gil(|py| -> PyResult<()> {
+        let population = Python::with_gil(|py| -> PyResult<Population> {
+
             let config: &PyDict = pyconfig.as_ref(py);
-            if let Some(size) = config.get_item("population_size")? {
-                let population_size: usize = size.extract()?;
-            }
 
-            if let Some(rate) = config.get_item("survival_rate")? {
-                let survival_rate: f32 = rate.extract()?;
-            }
+            let population_size: usize = match config.get_item("population_size")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing population size parameter")
+            };
 
-            if let Some(rate) = config.get_item("mutation_rate")? {
-                let mutation_rate: f32 = rate.extract()?;
-            }
+            let survival_rate: f32  = match config.get_item("survival_rate")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing population survival rate parameter")
+            };
 
-            if let Some(rate) = config.get_item("topology_mutation_rate")? {
-                let topology_mutation_rate: f32 = rate.extract()?;
-            }
+            let mutation_rate: f32  = match config.get_item("mutation_rate")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing population mutation rate parameter")
+            };
 
-            Ok(())
-        });
+            let topology_mutation_rate: f32  = match config.get_item("topology_mutation_rate")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing population topology rate parameter")
+            };
 
-        let population = Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate);
+
+            Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
+
+        })?;
+
         Ok(PopulationApi {
             population,
             config: pyconfig
