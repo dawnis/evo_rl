@@ -71,6 +71,11 @@ struct PopulationApi {
 }
 
 
+//TODO: more verbose output in Python
+//TODO: be able to pass in evaluation function from Python
+//TODO: genome specification from python
+//TODO: nework visualization and exploration
+
 #[pymethods]
 impl PopulationApi {
     #[new]
@@ -113,7 +118,6 @@ impl PopulationApi {
         })
     }
 
-    //TODO: run xor_minimal_test as is from Python
     pub fn evolve(&mut self) {
         let project_name = "XOR_Test".to_string();
         let project_directory = "agents/XORtest/".to_string();
