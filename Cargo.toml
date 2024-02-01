@@ -7,8 +7,11 @@ version = "0.1.0-alpha.1"
 edition = "2021"
 authors = ["Dawnis Chow"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "evo_rl"
+crate-type = ["cdylib"]
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 thiserror = "1.0"
 lazy_static = "1.4.0"
@@ -16,6 +19,7 @@ rand = { version = "0.8.5", features = ["small_rng"] }
 rand_distr = "0.4.3"
 rand_seeder = "0.2.3"
 nalgebra = "0.32.3"
+pyo3 = { git = "https://github.com/pyo3/pyo3", features = ["extension-module"] }
 ndarray = { version = "0.15.6", features = ["serde"] }
 petgraph = "0.6.4"
 pretty_env_logger = "0.5.0"
