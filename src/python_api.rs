@@ -1,26 +1,59 @@
 //! This module implements a Python API for Evo RL to allow training and running Population in
 //! Python
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyFunction, PyDict, PyList};
 use pyo3::Py;
 use crate::graph::NeuralNetwork;
 use crate::population::{Population, PopulationConfig, FitnessEvaluation, FitnessValueError};
 use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 
-struct XorEvaluation {
-        pub fitness_begin: f32
+
+//TODO: Try to expose a Python API for Neural Network
+// This api must allow a configuration of a stopping condition for forward
+// and evaluation conditions for the NN. This will allow us to pass this into evolve
+// as the proper context
+#[pyclass]
+struct PyNetwork {
+   // network: NeuralNetwork
+}
+
+#[pymethods]
+impl PyNetwork {
+
+    #[staticmethod]
+    pub fn new() -> Self {
+        PyNetwork {}
     }
 
-    impl XorEvaluation {
-        pub fn new() -> Self {
-            XorEvaluation {
-                fitness_begin: 6.0
-            }
+    //TODO: convert the PyList to Vec<f32>
+    pub fn agent_forward(&mut self, network_arguments: Py<PyList>) {
+
+        let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+            let input_vec = network_arguments.as_ref(py);
+            input_vec.extract()?
+
+        });
+
+    }
+}
+
+struct PyLambda<'a> {
+        pub fitness_begin: f32,
+        pub lambda: &'a PyFunction,
+    }
+
+impl<'a> PyLambda<'a> {
+    pub fn new(lambda: &PyFunction) -> Self {
+        PyLambda {
+            fitness_begin: 6.0,
+            lambda
+
         }
-
     }
 
-    impl FitnessEvaluation for XorEvaluation {
+}
+
+    impl<'a> FitnessEvaluation for PyLambda<'a> {
         fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
@@ -118,11 +151,18 @@ impl PopulationApi {
         })
     }
 
-    pub fn evolve(&mut self) {
+    //TODO: evaluate must involve communication between population and python
+    // 
+    fn evaluate_agent(&mut self, context: &PyFunction) -> f32 {
+
+        1.
+    }
+
+    pub fn evolve(&mut self, context: &PyFunction) {
         let project_name = "XOR_Test".to_string();
         let project_directory = "agents/XORtest/".to_string();
         
-        let ef = XorEvaluation::new();
+        let ef = PyLambda::new();
 
         let config = PopulationConfig::new(project_name, Some(project_directory), ef, 200, 0.50, 0.50, false, Some(17));
 
