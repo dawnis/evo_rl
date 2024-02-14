@@ -25,12 +25,14 @@ impl PyNetwork {
         PyNetwork {}
     }
 
-    //TODO: convert the PyList to Vec<f32>
     pub fn agent_forward(&mut self, network_arguments: Py<PyList>) {
 
         let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
             let input_vec = network_arguments.as_ref(py);
-            input_vec.extract()?
+
+            input_vec.iter()
+                .map(|p| p.extract::<f32>())
+                .collect()
 
         });
 
