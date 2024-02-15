@@ -1,5 +1,6 @@
 //! This module implements a Python API for Evo RL to allow training and running Population in
 //! Python
+use log::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyFunction, PyDict, PyList};
 use pyo3::Py;
@@ -7,87 +8,6 @@ use crate::graph::NeuralNetwork;
 use crate::population::{Population, PopulationConfig, FitnessEvaluation, FitnessValueError};
 use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 
-
-//TODO: Try to expose a Python API for Neural Network
-// This api must allow a configuration of a stopping condition for forward
-// and evaluation conditions for the NN. This will allow us to pass this into evolve
-// as the proper context
-#[pyclass]
-struct PyNetwork {
-   // network: NeuralNetwork
-}
-
-#[pymethods]
-impl PyNetwork {
-
-    #[staticmethod]
-    pub fn new() -> Self {
-        PyNetwork {}
-    }
-
-    pub fn agent_forward(&mut self, network_arguments: Py<PyList>) {
-
-        let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
-            let input_vec = network_arguments.as_ref(py);
-
-            input_vec.iter()
-                .map(|p| p.extract::<f32>())
-                .collect()
-
-        });
-
-    }
-}
-
-struct PyLambda<'a> {
-        pub fitness_begin: f32,
-        pub lambda: &'a PyFunction,
-    }
-
-impl<'a> PyLambda<'a> {
-    pub fn new(lambda: &PyFunction) -> Self {
-        PyLambda {
-            fitness_begin: 6.0,
-            lambda
-
-        }
-    }
-
-}
-
-    impl<'a> FitnessEvaluation for PyLambda<'a> {
-        fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
-            let mut fitness_evaluation = self.fitness_begin;
-            //complexity penalty
-            let complexity = agent.node_identity_map.len() as f32;
-            let complexity_penalty = 0.01 * complexity;
-
-            for bit1 in 0..2 {
-                for bit2 in 0..2 {
-                    agent.fwd(vec![bit1 as f32, bit2 as f32]);
-                    let network_output = agent.fetch_network_output();
-
-                    let xor_true = (bit1 > 0) ^ (bit2 > 0);
-                    let xor_true_float: f32 = if xor_true {1.} else {0.};
-
-                    fitness_evaluation -= (xor_true_float - network_output[0]).powf(2.);
-
-                }
-            }
-
-            let fitness_value = if fitness_evaluation > complexity_penalty {
-                fitness_evaluation - complexity_penalty }
-            else {0.};
-
-            if fitness_value < 0. {
-                Err(FitnessValueError::NegativeFitnessError)
-            } 
-            else {
-                Ok(fitness_value) 
-            }
-
-        }
-    }
 
 /// A Python module for evo_rl implemented in Rust. The name of this function must match
 /// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
@@ -110,6 +30,67 @@ struct PopulationApi {
 //TODO: be able to pass in evaluation function from Python
 //TODO: genome specification from python
 //TODO: nework visualization and exploration
+//TODO: The evaluation of the network should be external to evo_rl library in general. 
+//In order to accomplish this, we should have a Python enabled FitnessEvaluation trait that works
+//with PyNetworkApi 
+
+
+struct PyNetworkApi<'a> {
+    pub lambda: &'a PyFunction,
+}
+
+impl<'a> PyNetworkApi<'a> {
+
+    pub fn new(lambda: &PyFunction) -> Self {
+        PyNetworkApi {lambda}
+    }
+
+    pub fn agent_forward(&self, nn: &mut NeuralNetwork, network_arguments: Py<PyList>) {
+
+        let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+            let input_vec = network_arguments.as_ref(py);
+
+            input_vec.iter()
+                .map(|p| p.extract::<f32>())
+                .collect()
+
+        });
+
+        match py_vec {
+            Ok(v) => nn.fwd(v),
+            err => error!("PyError: {:?}", err)
+        }
+
+    }
+}
+
+impl<'a> FitnessEvaluation for PyNetworkApi<'a> {
+    fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
+        //TODO: define the signature of the lambda function.
+        //def evaluate_fitness(x: n.agent_forward):
+        //    runs agent_forward n times and returns fitness value
+        
+
+        //TODO: run an agent through the lambda function until a stop signal is sent. 
+        //call lambda on self.agent_forward, which returns the fitness
+        
+        let fitness_eval = Python::with_gil(|py| -> f32 {
+            let kwargs = [("agent_forward", self.agent_forward(agent, vec![0.]))].into_py_dict(py);
+
+            let py_evaluation = self.lambda.call(py, (), Some(kwargs))?;
+
+            match py_evaluation {
+                Some(x) => x.extract().as_ref(),
+                _ => PyErr
+            }
+        });
+
+        //TODO: get the fitness value from the lambda function
+        //return  the fitness value
+        Ok(fitness_eval)
+    }
+}
+
 
 #[pymethods]
 impl PopulationApi {
