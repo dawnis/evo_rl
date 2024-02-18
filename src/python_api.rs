@@ -21,14 +21,6 @@ fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-#[pyclass]
-/// Wrapper for Population
-struct PopulationApi {
-    population: Population,
-    config: Py<PyDict>
-}
-
-
 //TODO: more verbose output in Python
 //TODO: be able to pass in evaluation function from Python
 //TODO: genome specification from python
@@ -43,14 +35,50 @@ struct PopulationApi {
 #[pyclass(name = "FitnessEvaluator")]
 pub struct PyFitnessEvaluator {
     pub nn: Cell<f32>,
+    population: Population,
+    config: Py<PyDict>,
     lambda: Py<PyAny>
 }
 
 #[pymethods]
 impl PyFitnessEvaluator {
-    fn new(lambda: Py<PyAny>) -> Self {
-        PyFitnessEvaluator {nn: Cell::new(0.),
-                         lambda}
+    fn new(config: Py<PyDict>, lambda: Py<PyAny>) -> PyResult<Self> {
+
+        let genome = XOR_GENOME_MINIMAL.clone();
+
+        let population = Python::with_gil(|py| -> PyResult<Population> {
+
+            let config: &PyDict = config.as_ref(py);
+
+            let population_size: usize = match config.get_item("population_size")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing population size parameter")
+            };
+
+            let survival_rate: f32  = match config.get_item("survival_rate")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing population survival rate parameter")
+            };
+
+            let mutation_rate: f32  = match config.get_item("mutation_rate")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing population mutation rate parameter")
+            };
+
+            let topology_mutation_rate: f32  = match config.get_item("topology_mutation_rate")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing population topology rate parameter")
+            };
+
+
+            Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
+
+        })?;
+
+        Ok(PyFitnessEvaluator {nn: Cell::new(0.),
+                         config,
+                         population,
+                         lambda})
     }
 
     #[getter]
@@ -72,6 +100,14 @@ impl PyFitnessEvaluator {
     }
 }
 
+#[pyclass]
+/// Wrapper for Population
+struct PopulationApi {
+    population: Population,
+    evaluator: PyFitnessEvaluator,
+    config: Py<PyDict>
+}
+
 impl FitnessEvaluation for PopulationApi {
     fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
         //TODO: define the signature of the lambda function.
@@ -90,7 +126,7 @@ impl FitnessEvaluation for PopulationApi {
 #[pymethods]
 impl PopulationApi {
     #[new]
-    pub fn new(pyconfig: Py<PyDict>) -> PyResult<Self> {
+    pub fn new(pyconfig: Py<PyDict>, context: Py<PyFitnessEvaluator>) -> PyResult<Self> {
         let genome = XOR_GENOME_MINIMAL.clone();
 
 
@@ -120,6 +156,11 @@ impl PopulationApi {
 
 
             Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
+
+        })?;
+
+        let py_evaluation_context = Python::with_gil( |py| -> PyResult<PyFitnessEvaluator> {
+            context.extract()?
 
         })?;
         
