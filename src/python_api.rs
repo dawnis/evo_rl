@@ -2,8 +2,10 @@
 //! Python
 use log::*;
 use pyo3::prelude::*;
-use pyo3::types::{PyFunction, PyDict, PyList};
+use pyo3::types::{PyFunction, PyDict, PyList, IntoPyDict, PyTuple};
 use pyo3::Py;
+use std::collections::HashMap;
+use std::cell::Cell;
 use crate::graph::NeuralNetwork;
 use crate::population::{Population, PopulationConfig, FitnessEvaluation, FitnessValueError};
 use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
@@ -15,6 +17,7 @@ use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 #[pymodule]
 fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<PopulationApi>()?;
+    m.add_class::<PyFitnessEvaluator>();
     Ok(())
 }
 
@@ -34,56 +37,48 @@ struct PopulationApi {
 //In order to accomplish this, we should have a Python enabled FitnessEvaluation trait that works
 //with PyNetworkApi 
 
+//see https://pyo3.rs/main/class/call
 
-struct PyNetworkApi<'a> {
-    pub lambda: &'a PyFunction,
+//TODO: Goal is to pass in a callable class which wraps the evaluation function. 
+#[pyclass(name = "FitnessEvaluator")]
+pub struct PyFitnessEvaluator {
+    pub nn: Cell<f32>,
+    lambda: Py<PyAny>
 }
 
-impl<'a> PyNetworkApi<'a> {
-
-    pub fn new(lambda: &PyFunction) -> Self {
-        PyNetworkApi {lambda}
+#[pymethods]
+impl PyFitnessEvaluator {
+    fn new(lambda: Py<PyAny>) -> Self {
+        PyFitnessEvaluator {nn: Cell::new(0.),
+                         lambda}
     }
 
-    pub fn agent_forward(&self, nn: &mut NeuralNetwork, network_arguments: Py<PyList>) {
+    #[getter]
+    fn evaluate(&self) -> f32 {
+        self.nn.get()
+    }
 
-        let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
-            let input_vec = network_arguments.as_ref(py);
+    #[pyo3(signature = (*args, **kwargs))]
+    fn __call__ (
+        &self,
+        py: Python<'_>,
+        args: &PyTuple,
+        kwargs: Option<Bound<'_, PyDict>>,
+        ) -> PyResult<Py<PyAny>> {
 
-            input_vec.iter()
-                .map(|p| p.extract::<f32>())
-                .collect()
+        let call_result = self.lambda.call_bound(py, args, kwargs.as_ref())?;
 
-        });
-
-        match py_vec {
-            Ok(v) => nn.fwd(v),
-            err => error!("PyError: {:?}", err)
-        }
-
+        Ok(call_result)
     }
 }
 
-impl<'a> FitnessEvaluation for PyNetworkApi<'a> {
+impl FitnessEvaluation for PopulationApi {
     fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
         //TODO: define the signature of the lambda function.
         //def evaluate_fitness(x: n.agent_forward):
         //    runs agent_forward n times and returns fitness value
-        
 
-        //TODO: run an agent through the lambda function until a stop signal is sent. 
-        //call lambda on self.agent_forward, which returns the fitness
-        
-        let fitness_eval = Python::with_gil(|py| -> f32 {
-            let kwargs = [("agent_forward", self.agent_forward(agent, vec![0.]))].into_py_dict(py);
-
-            let py_evaluation = self.lambda.call(py, (), Some(kwargs))?;
-
-            match py_evaluation {
-                Some(x) => x.extract().as_ref(),
-                _ => PyErr
-            }
-        });
+        let fitness_eval = 1.;
 
         //TODO: get the fitness value from the lambda function
         //return  the fitness value
@@ -127,18 +122,29 @@ impl PopulationApi {
             Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
 
         })?;
-
+        
         Ok(PopulationApi {
             population,
             config: pyconfig
         })
     }
 
-    //TODO: evaluate must involve communication between population and python
-    // 
-    fn evaluate_agent(&mut self, context: &PyFunction) -> f32 {
+    fn agent_forward(&self, nn: &mut NeuralNetwork, network_arguments: Py<PyList>) {
 
-        1.
+    let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+        let input_vec = network_arguments.as_ref(py);
+
+        input_vec.iter()
+            .map(|p| p.extract::<f32>())
+            .collect()
+
+        });
+
+        match py_vec {
+            Ok(v) => nn.fwd(v),
+            err => error!("PyError: {:?}", err)
+        }
+
     }
 
     pub fn evolve(&mut self, context: &PyFunction) {
@@ -156,30 +162,3 @@ impl PopulationApi {
 }
 
 
-/*
-#[pyclass]
-struct PythonEvaluationFunction {
-    py_evaluator: PyObject,
-}
-
-#[pymethods]
-impl PythonEvaluationFunction {
-    #[new]
-    fn new (py_evaluator: PyObject) {
-        if py_evaluator.as_ref(py).cast_as::<PyCallable>().is_ok() {
-            Ok( PythonEvaluationFunction { py_evaluator } )
-        } else {
-             Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Evaluation function is not allable",
-            ))
-        }
-    }
-}
-
-impl FitnessEvaluation for PythonEvaluationFunction {
-    fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
-        let eval = self.pyevaluator.as_ref(self.py);
-        eval.call0()
-    }
-}
-*/
