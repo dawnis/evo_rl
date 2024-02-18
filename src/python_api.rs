@@ -34,56 +34,13 @@ fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 //TODO: Goal is to pass in a callable class which wraps the evaluation function. 
 #[pyclass(name = "FitnessEvaluator")]
 pub struct PyFitnessEvaluator {
-    pub nn: Cell<f32>,
-    population: Population,
-    config: Py<PyDict>,
     lambda: Py<PyAny>
 }
 
 #[pymethods]
 impl PyFitnessEvaluator {
-    fn new(config: Py<PyDict>, lambda: Py<PyAny>) -> PyResult<Self> {
-
-        let genome = XOR_GENOME_MINIMAL.clone();
-
-        let population = Python::with_gil(|py| -> PyResult<Population> {
-
-            let config: &PyDict = config.as_ref(py);
-
-            let population_size: usize = match config.get_item("population_size")? {
-                Some(x) => x.extract()?,
-                None => panic!("missing population size parameter")
-            };
-
-            let survival_rate: f32  = match config.get_item("survival_rate")? {
-                Some(x) => x.extract()?,
-                None => panic!("missing population survival rate parameter")
-            };
-
-            let mutation_rate: f32  = match config.get_item("mutation_rate")? {
-                Some(x) => x.extract()?,
-                None => panic!("missing population mutation rate parameter")
-            };
-
-            let topology_mutation_rate: f32  = match config.get_item("topology_mutation_rate")? {
-                Some(x) => x.extract()?,
-                None => panic!("missing population topology rate parameter")
-            };
-
-
-            Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
-
-        })?;
-
-        Ok(PyFitnessEvaluator {nn: Cell::new(0.),
-                         config,
-                         population,
-                         lambda})
-    }
-
-    #[getter]
-    fn evaluate(&self) -> f32 {
-        self.nn.get()
+    fn new(lambda: Py<PyAny>) -> Self {
+        PyFitnessEvaluator { lambda }
     }
 
     #[pyo3(signature = (*args, **kwargs))]
@@ -104,7 +61,7 @@ impl PyFitnessEvaluator {
 /// Wrapper for Population
 struct PopulationApi {
     population: Population,
-    evaluator: PyFitnessEvaluator,
+    evaluator: Py<PyFitnessEvaluator>,
     config: Py<PyDict>
 }
 
@@ -159,13 +116,9 @@ impl PopulationApi {
 
         })?;
 
-        let py_evaluation_context = Python::with_gil( |py| -> PyResult<PyFitnessEvaluator> {
-            context.extract()?
-
-        })?;
-        
         Ok(PopulationApi {
             population,
+            evaluator: context,
             config: pyconfig
         })
     }
