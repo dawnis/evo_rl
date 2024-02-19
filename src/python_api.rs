@@ -51,6 +51,21 @@ impl FitnessEvaluation for PyFitnessEvaluator{
     }
 }
 
+impl<'source> FromPyObject<'source> for PyFitnessEvaluator {
+    fn extract(obj: &'source PyAny) -> PyResult<Self> {
+        let py = obj.py();
+
+        let dict = obj.downcast::<PyDict>()?;
+
+        let py_function = dict.get_item("lambda")
+            .or_else(|py| Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("Expected a lambda field")))?
+            .to_object(py); 
+
+        Ok(
+            PyFitnessEvaluator { lambda: py_function }
+        )
+    }
+}
 
 #[pymethods]
 impl PyFitnessEvaluator {
@@ -70,6 +85,27 @@ impl PyFitnessEvaluator {
 
         Ok(call_result)
     }
+
+    /*
+    fn agent_forward(&self, nn: &mut NeuralNetwork, network_arguments: Py<PyList>) {
+
+    let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+        let input_vec = network_arguments.as_ref(py);
+
+        input_vec.iter()
+            .map(|p| p.extract::<f32>())
+            .collect()
+
+        });
+
+        match py_vec {
+            Ok(v) => nn.fwd(v),
+            err => error!("PyError: {:?}", err)
+        }
+
+    }
+    */
+
 }
 
 #[pyclass]
@@ -123,24 +159,6 @@ impl PopulationApi {
         })
     }
 
-    fn agent_forward(&self, nn: &mut NeuralNetwork, network_arguments: Py<PyList>) {
-
-    let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
-        let input_vec = network_arguments.as_ref(py);
-
-        input_vec.iter()
-            .map(|p| p.extract::<f32>())
-            .collect()
-
-        });
-
-        match py_vec {
-            Ok(v) => nn.fwd(v),
-            err => error!("PyError: {:?}", err)
-        }
-
-    }
-
     pub fn evolve(&mut self) {
         let project_name = "XOR_Test".to_string();
         let project_directory = "agents/XORtest/".to_string();
@@ -148,7 +166,7 @@ impl PopulationApi {
 
         Python::with_gil(|py| {
             let py_evalutor: PyRef<PyFitnessEvaluator> = self.evaluator.borrow(py);
-            let config = PopulationConfig::new(project_name, Some(project_directory), *py_evalutor, 200, 0.50, 0.50, false, Some(17));
+            let config = PopulationConfig::new(project_name, Some(project_directory), &py_evalutor, 200, 0.50, 0.50, false, Some(17));
             self.population.evolve(config, 1000, 5.8);
         });
 
