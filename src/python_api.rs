@@ -164,11 +164,19 @@ impl PopulationApi {
         let project_directory = "agents/XORtest/".to_string();
 
 
-        Python::with_gil(|py| {
-            let py_evalutor: PyRef<PyFitnessEvaluator> = self.evaluator.borrow(py);
-            let config = PopulationConfig::new(project_name, Some(project_directory), &py_evalutor, 200, 0.50, 0.50, false, Some(17));
-            self.population.evolve(config, 1000, 5.8);
+        let py_context = Python::with_gil(|py| -> PyResult<PyFitnessEvaluator> {
+            let py_evalutor = self.evaluator.extract(py)?;
+            Ok(py_evalutor)
         });
+
+        match py_context {
+            Ok(context) => {
+                let config = PopulationConfig::new(project_name, Some(project_directory), context, 200, 0.50, 0.50, false, Some(17));
+                self.population.evolve(config, 1000, 5.8);
+            },
+
+            Err(e) => error!("Unable to unpack Python context for population with error {}", e)
+        };
 
     }
 
