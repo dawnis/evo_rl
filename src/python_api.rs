@@ -17,7 +17,7 @@ use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 #[pymodule]
 fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<PopulationApi>()?;
-    m.add_class::<PyFitnessEvaluator>();
+    m.add_class::<PyFitnessEvaluator>()?;
     Ok(())
 }
 
@@ -36,6 +36,21 @@ fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 pub struct PyFitnessEvaluator {
     lambda: Py<PyAny>
 }
+
+impl FitnessEvaluation for PyFitnessEvaluator{
+    fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
+        //TODO: define the signature of the lambda function.
+        //def evaluate_fitness(x: n.agent_forward):
+        //    runs agent_forward n times and returns fitness value
+
+        let fitness_eval = 1.;
+
+        //TODO: get the fitness value from the lambda function
+        //return  the fitness value
+        Ok(fitness_eval)
+    }
+}
+
 
 #[pymethods]
 impl PyFitnessEvaluator {
@@ -64,21 +79,6 @@ struct PopulationApi {
     evaluator: Py<PyFitnessEvaluator>,
     config: Py<PyDict>
 }
-
-impl FitnessEvaluation for PopulationApi {
-    fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
-        //TODO: define the signature of the lambda function.
-        //def evaluate_fitness(x: n.agent_forward):
-        //    runs agent_forward n times and returns fitness value
-
-        let fitness_eval = 1.;
-
-        //TODO: get the fitness value from the lambda function
-        //return  the fitness value
-        Ok(fitness_eval)
-    }
-}
-
 
 #[pymethods]
 impl PopulationApi {
@@ -141,15 +141,17 @@ impl PopulationApi {
 
     }
 
-    pub fn evolve(&mut self, context: &PyFunction) {
+    pub fn evolve(&mut self) {
         let project_name = "XOR_Test".to_string();
         let project_directory = "agents/XORtest/".to_string();
-        
-        let ef = PyLambda::new();
 
-        let config = PopulationConfig::new(project_name, Some(project_directory), ef, 200, 0.50, 0.50, false, Some(17));
 
-        self.population.evolve(config, 1000, 5.8);
+        Python::with_gil(|py| {
+            let py_evalutor: PyRef<PyFitnessEvaluator> = self.evaluator.borrow(py);
+            let config = PopulationConfig::new(project_name, Some(project_directory), *py_evalutor, 200, 0.50, 0.50, false, Some(17));
+            self.population.evolve(config, 1000, 5.8);
+        });
+
     }
 
 
