@@ -43,11 +43,25 @@ impl FitnessEvaluation for PyFitnessEvaluator{
         //def evaluate_fitness(x: n.agent_forward):
         //    runs agent_forward n times and returns fitness value
 
-        let fitness_eval = 1.;
+        let fitness_value_py_result = Python::with_gil(|py| -> PyResult<f32> {
+            let args = PyTuple::empty_bound(py);
+        
+            // call object with PyDict
+            let kwargs = [("agent", 1)].into_py_dict(py);
+
+
+            let lambda_call = self.lambda.call_bound(py, args, Some(&kwargs.as_borrowed()));
+
+            Ok(lambda_call)
+        });
+
 
         //TODO: get the fitness value from the lambda function
-        //return  the fitness value
-        Ok(fitness_eval)
+        //
+        match fitness_value_py_result {
+            Ok(fitness) => Ok(fitness),
+            Err(e) => panic!("Error {}", e)
+        }
     }
 }
 
@@ -182,5 +196,41 @@ impl PopulationApi {
 
 
 }
+fn test() -> PyResult<()> {
+    let key1 = "key1";
+    let val1 = 1;
+    let key2 = "key2";
+    let val2 = 2;
 
+    Python::with_gil(|py| {
+        let fun: Py<PyAny> = PyModule::from_code(
+            py,
+            "def example(*args, **kwargs):
+                if args != ():
+                    print('called with args', args)
+                if kwargs != {}:
+                    print('called with kwargs', kwargs)
+                if args == () and kwargs == {}:
+                    print('called with no arguments')",
+            "",
+            "",
+        )?
+        .getattr("example")?
+        .into();
 
+        // call object with PyDict
+        let kwargs = [(key1, val1)].into_py_dict(py);
+        fun.call_bound(py, (), Some(&kwargs.as_borrowed()))?;
+
+        // pass arguments as Vec
+        let kwargs = vec![(key1, val1), (key2, val2)];
+        fun.call_bound(py, (), Some(&kwargs.into_py_dict_bound(py)))?;
+
+        // pass arguments as HashMap
+        let mut kwargs = HashMap::<&str, i32>::new();
+        kwargs.insert(key1, 1);
+        fun.call_bound(py, (), Some(&kwargs.into_py_dict_bound(py)))?;
+
+        Ok(())
+    })
+}
