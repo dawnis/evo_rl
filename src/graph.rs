@@ -60,7 +60,11 @@ impl ToPyObject for NeuralNetwork {
     fn to_object(&self, py: Python<'_>) -> PyObject {
         let dict = PyDict::new(py);
 
-        let python_friendly_map: HashMap<&str, i32> = HashMap::new();
+        let mut python_friendly_map: HashMap<&str, usize> = HashMap::new();
+
+        for key in self.node_identity_map.keys() {
+            python_friendly_map.insert(&key, self.node_identity_map[key].index().into());
+        }
 
         dict.set_item("genome", self.genome);
         dict.set_item("graph", self.graph);
