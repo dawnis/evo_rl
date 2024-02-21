@@ -30,6 +30,7 @@ fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 //with PyNetworkApi 
 
 //see https://pyo3.rs/main/class/call
+//
 
 //TODO: Goal is to pass in a callable class which wraps the evaluation function. 
 #[pyclass(name = "FitnessEvaluator")]
@@ -47,7 +48,9 @@ impl FitnessEvaluation for PyFitnessEvaluator{
             let args = PyTuple::empty_bound(py);
         
             // call object with PyDict
-            let kwargs = [("agent", 1)].into_py_dict(py);
+            
+            let kwargs = PyDict::new(py);
+            kwargs.set_item("agent", agent);
 
             let lambda_call = self.lambda.call_bound(py, args, Some(&kwargs.as_borrowed()));
 

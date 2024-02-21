@@ -16,6 +16,8 @@ use petgraph::dot::{Dot, Config};
 use petgraph::visit::Bfs;
 use nalgebra::DVector;
 use thiserror::Error;
+use pyo3::prelude::*;
+use pyo3::types::{PyDict, IntoPyDict};
 
 /// `NeuralNetwork` is a struct that represents a directed graph
 /// based feed-forward neural network, initialized from an `EneCode` genome.
@@ -52,6 +54,21 @@ pub struct NeuralNetwork {
     pub graph: DiGraph<Nn, f32>,
     pub node_identity_map: HashMap<String, NodeIndex>,
     network_output: Vec<f32>,
+}
+
+impl ToPyObject for NeuralNetwork {
+    fn to_object(&self, py: Python<'_>) -> PyObject {
+        let dict = PyDict::new(py);
+
+        let python_friendly_map: HashMap<&str, i32> = HashMap::new();
+
+        dict.set_item("genome", self.genome);
+        dict.set_item("graph", self.graph);
+        dict.set_item("network_output", &self.network_output);
+        dict.set_item("node_identity_map", python_friendly_map.into_py_dict(py));
+
+        dict.into()
+    }
 }
 
 impl NeuralNetwork {
