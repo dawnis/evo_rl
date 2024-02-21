@@ -2,7 +2,7 @@
 //! Python
 use log::*;
 use pyo3::prelude::*;
-use pyo3::types::{PyFunction, PyDict, PyList, IntoPyDict, PyTuple};
+use pyo3::types::{PyFunction, PyDict, PyList, IntoPyDict, PyTuple, PyFloat};
 use pyo3::Py;
 use std::collections::HashMap;
 use std::cell::Cell;
@@ -49,15 +49,15 @@ impl FitnessEvaluation for PyFitnessEvaluator{
             // call object with PyDict
             let kwargs = [("agent", 1)].into_py_dict(py);
 
-
             let lambda_call = self.lambda.call_bound(py, args, Some(&kwargs.as_borrowed()));
 
-            Ok(lambda_call)
+            match lambda_call {
+                Ok(x) => Ok(x.extract::<f32>(py)?),
+                Err(e) => panic!("Error {}", e)
+            }
         });
 
 
-        //TODO: get the fitness value from the lambda function
-        //
         match fitness_value_py_result {
             Ok(fitness) => Ok(fitness),
             Err(e) => panic!("Error {}", e)
@@ -93,11 +93,12 @@ impl PyFitnessEvaluator {
         py: Python<'_>,
         args: &PyTuple,
         kwargs: Option<Bound<'_, PyDict>>,
-        ) -> PyResult<Py<PyAny>> {
+        ) -> PyResult<Py<PyFloat>> {
 
         let call_result = self.lambda.call_bound(py, args, kwargs.as_ref())?;
+        let call_result_float = call_result.extract::<Py<PyFloat>>(py)?;
 
-        Ok(call_result)
+        Ok(call_result_float)
     }
 
     /*
