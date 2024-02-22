@@ -3,10 +3,13 @@
 //! offspring.
 
 use log::*;
+use pyo3::ToPyObject;
 use rand::Rng;
 use rand::seq::IteratorRandom;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
+use pyo3::prelude::*;
+use pyo3::types::{PyDict, IntoPyDict};
 
 use crate::{graph::NeuralNetwork, sort_genes_by_neuron_type};
 
@@ -70,6 +73,18 @@ pub struct EneCode {
     pub topology: Vec<TopologyGene>,
     pub neuronal_props: NeuronalPropertiesGene,
     pub meta_learning: MetaLearningGene,
+}
+
+impl ToPyObject for EneCode {
+    fn to_object(&self, py: Python<'_>) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("neuron_id", &self.neuron_id);
+        dict.set_item("topology", &self.topology);
+        dict.set_item("neuronal_props", &self.neuronal_props);
+        dict.set_item("meta_learning", &self.meta_learning);
+        
+        dict.into()
+    }
 }
 
 /// Creates genome from neural network after recombination and mutation
@@ -328,6 +343,25 @@ pub struct TopologyGene {
     pub active: bool,
 }
 
+impl ToPyObject for TopologyGene {
+    fn to_object(&self, py: Python<'_>) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("innovation_number", &self.innovation_number);
+
+        match self.pin {
+            NeuronType::In => dict.set_item("pin", "Input"),
+            NeuronType::Out => dict.set_item("pin", "Output"),
+            NeuronType::Hidden => dict.set_item("pin", "Hidden"),
+        };
+
+        dict.set_item("inputs", &self.inputs);
+        dict.set_item("genetic_bias", self.genetic_bias);
+        dict.set_item("active", self.active);
+
+        dict.into()
+    }
+}
+
 /// Gene that defines the neuronal properties.
 ///
 /// # Fields
@@ -343,6 +377,17 @@ pub struct NeuronalPropertiesGene {
     pub tanh_alpha: f32,
 }
 
+impl ToPyObject for NeuronalPropertiesGene {
+    fn to_object(&self, py: Python<'_>) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("innovation_number", &self.innovation_number);
+        dict.set_item("tau", self.tau);
+        dict.set_item("homeostatic_force", self.homeostatic_force);
+        dict.set_item("tanh_alpha", self.tanh_alpha);
+        dict.into()
+    }
+}
+
 /// Gene that defines the meta-learning rules for the neural network.
 ///
 /// # Fields
@@ -354,6 +399,16 @@ pub struct MetaLearningGene {
     pub innovation_number: String,
     pub learning_rate: f32,
     pub learning_threshold: f32
+}
+
+impl ToPyObject for MetaLearningGene {
+    fn to_object(&self, py: Python<'_>) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("innnovation_number", &self.innovation_number);
+        dict.set_item("learning_rate", self.learning_rate);
+        dict.set_item("learning_threshold", self.learning_threshold);
+        dict.into()
+    }
 }
 
 #[cfg(test)]

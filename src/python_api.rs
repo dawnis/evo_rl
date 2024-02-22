@@ -1,58 +1,15 @@
 //! This module implements a Python API for Evo RL to allow training and running Population in
 //! Python
+use log::*;
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyFunction, PyDict, PyList, IntoPyDict, PyTuple, PyFloat};
 use pyo3::Py;
+use std::collections::HashMap;
+use std::cell::Cell;
 use crate::graph::NeuralNetwork;
 use crate::population::{Population, PopulationConfig, FitnessEvaluation, FitnessValueError};
 use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 
-struct XorEvaluation {
-        pub fitness_begin: f32
-    }
-
-    impl XorEvaluation {
-        pub fn new() -> Self {
-            XorEvaluation {
-                fitness_begin: 6.0
-            }
-        }
-
-    }
-
-    impl FitnessEvaluation for XorEvaluation {
-        fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
-            let mut fitness_evaluation = self.fitness_begin;
-            //complexity penalty
-            let complexity = agent.node_identity_map.len() as f32;
-            let complexity_penalty = 0.01 * complexity;
-
-            for bit1 in 0..2 {
-                for bit2 in 0..2 {
-                    agent.fwd(vec![bit1 as f32, bit2 as f32]);
-                    let network_output = agent.fetch_network_output();
-
-                    let xor_true = (bit1 > 0) ^ (bit2 > 0);
-                    let xor_true_float: f32 = if xor_true {1.} else {0.};
-
-                    fitness_evaluation -= (xor_true_float - network_output[0]).powf(2.);
-
-                }
-            }
-
-            let fitness_value = if fitness_evaluation > complexity_penalty {
-                fitness_evaluation - complexity_penalty }
-            else {0.};
-
-            if fitness_value < 0. {
-                Err(FitnessValueError::NegativeFitnessError)
-            } 
-            else {
-                Ok(fitness_value) 
-            }
-
-        }
-    }
 
 /// A Python module for evo_rl implemented in Rust. The name of this function must match
 /// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
@@ -60,21 +17,127 @@ struct XorEvaluation {
 #[pymodule]
 fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<PopulationApi>()?;
+    m.add_class::<PyFitnessEvaluator>()?;
     Ok(())
+}
+
+//TODO: more verbose output in Python
+//TODO: be able to pass in evaluation function from Python
+//TODO: genome specification from python
+//TODO: nework visualization and exploration
+//TODO: The evaluation of the network should be external to evo_rl library in general. 
+//In order to accomplish this, we should have a Python enabled FitnessEvaluation trait that works
+//with PyNetworkApi 
+
+//see https://pyo3.rs/main/class/call
+//
+
+//TODO: Goal is to pass in a callable class which wraps the evaluation function. 
+#[pyclass(name = "FitnessEvaluator")]
+pub struct PyFitnessEvaluator {
+    lambda: Py<PyAny>
+}
+
+impl FitnessEvaluation for PyFitnessEvaluator{
+    fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
+        //TODO: define the signature of the lambda function.
+        //def evaluate_fitness(x: n.agent_forward):
+        //    runs agent_forward n times and returns fitness value
+
+        let fitness_value_py_result = Python::with_gil(|py| -> PyResult<f32> {
+            let args = PyTuple::empty_bound(py);
+        
+            // call object with PyDict
+            
+            let kwargs = PyDict::new(py);
+            kwargs.set_item("agent", agent);
+
+            let lambda_call = self.lambda.call_bound(py, args, Some(&kwargs.as_borrowed()));
+
+            match lambda_call {
+                Ok(x) => Ok(x.extract::<f32>(py)?),
+                Err(e) => panic!("Error {}", e)
+            }
+        });
+
+
+        match fitness_value_py_result {
+            Ok(fitness) => Ok(fitness),
+            Err(e) => panic!("Error {}", e)
+        }
+    }
+}
+
+impl<'source> FromPyObject<'source> for PyFitnessEvaluator {
+    fn extract(obj: &'source PyAny) -> PyResult<Self> {
+        let py = obj.py();
+
+        let dict = obj.downcast::<PyDict>()?;
+
+        let py_function = dict.get_item("lambda")
+            .or_else(|py| Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("Expected a lambda field")))?
+            .to_object(py); 
+
+        Ok(
+            PyFitnessEvaluator { lambda: py_function }
+        )
+    }
+}
+
+#[pymethods]
+impl PyFitnessEvaluator {
+    fn new(lambda: Py<PyAny>) -> Self {
+        PyFitnessEvaluator { lambda }
+    }
+
+    #[pyo3(signature = (*args, **kwargs))]
+    fn __call__ (
+        &self,
+        py: Python<'_>,
+        args: &PyTuple,
+        kwargs: Option<Bound<'_, PyDict>>,
+        ) -> PyResult<Py<PyFloat>> {
+
+        let call_result = self.lambda.call_bound(py, args, kwargs.as_ref())?;
+        let call_result_float = call_result.extract::<Py<PyFloat>>(py)?;
+
+        Ok(call_result_float)
+    }
+
+    /*
+    fn agent_forward(&self, nn: &mut NeuralNetwork, network_arguments: Py<PyList>) {
+
+    let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+        let input_vec = network_arguments.as_ref(py);
+
+        input_vec.iter()
+            .map(|p| p.extract::<f32>())
+            .collect()
+
+        });
+
+        match py_vec {
+            Ok(v) => nn.fwd(v),
+            err => error!("PyError: {:?}", err)
+        }
+
+    }
+    */
+
 }
 
 #[pyclass]
 /// Wrapper for Population
 struct PopulationApi {
     population: Population,
+    evaluator: Py<PyFitnessEvaluator>,
     config: Py<PyDict>
 }
-
 
 #[pymethods]
 impl PopulationApi {
     #[new]
-    pub fn new(pyconfig: Py<PyDict>) -> PyResult<Self> {
+    pub fn new(pyconfig: Py<PyDict>, context: Py<PyFitnessEvaluator>) -> PyResult<Self> {
         let genome = XOR_GENOME_MINIMAL.clone();
 
 
@@ -109,50 +172,32 @@ impl PopulationApi {
 
         Ok(PopulationApi {
             population,
+            evaluator: context,
             config: pyconfig
         })
     }
 
-    //TODO: run xor_minimal_test as is from Python
     pub fn evolve(&mut self) {
         let project_name = "XOR_Test".to_string();
         let project_directory = "agents/XORtest/".to_string();
-        
-        let ef = XorEvaluation::new();
 
-        let config = PopulationConfig::new(project_name, Some(project_directory), ef, 200, 0.50, 0.50, false, Some(17));
 
-        self.population.evolve(config, 1000, 5.8);
+        let py_context = Python::with_gil(|py| -> PyResult<PyFitnessEvaluator> {
+            let py_evalutor = self.evaluator.extract(py)?;
+            Ok(py_evalutor)
+        });
+
+        match py_context {
+            Ok(context) => {
+                let config = PopulationConfig::new(project_name, Some(project_directory), context, 200, 0.50, 0.50, false, Some(17));
+                self.population.evolve(config, 1000, 5.8);
+            },
+
+            Err(e) => error!("Unable to unpack Python context for population with error {}", e)
+        };
+
     }
 
 
 }
 
-
-/*
-#[pyclass]
-struct PythonEvaluationFunction {
-    py_evaluator: PyObject,
-}
-
-#[pymethods]
-impl PythonEvaluationFunction {
-    #[new]
-    fn new (py_evaluator: PyObject) {
-        if py_evaluator.as_ref(py).cast_as::<PyCallable>().is_ok() {
-            Ok( PythonEvaluationFunction { py_evaluator } )
-        } else {
-             Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Evaluation function is not allable",
-            ))
-        }
-    }
-}
-
-impl FitnessEvaluation for PythonEvaluationFunction {
-    fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
-        let eval = self.pyevaluator.as_ref(self.py);
-        eval.call0()
-    }
-}
-*/

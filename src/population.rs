@@ -13,7 +13,7 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 ///- **Parameters**: 
 ///  - `agent`: A mutable reference to a `NeuralNetwork`.
 pub trait FitnessEvaluation {
-    fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError>;
+    fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError>;
 }
 
 /// `PopulationConfig` is a struct that configures `Population` for evolutionary selection.
@@ -318,16 +318,18 @@ mod tests {
     }
 
     impl FitnessEvaluation for XorEvaluation {
-        fn fitness(&self, agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
+        fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
             let complexity = agent.node_identity_map.len() as f32;
             let complexity_penalty = 0.01 * complexity;
 
+            let mut agent_mut = agent.clone();
+
             for bit1 in 0..2 {
                 for bit2 in 0..2 {
-                    agent.fwd(vec![bit1 as f32, bit2 as f32]);
-                    let network_output = agent.fetch_network_output();
+                    agent_mut.fwd(vec![bit1 as f32, bit2 as f32]);
+                    let network_output = agent_mut.fetch_network_output();
 
                     let xor_true = (bit1 > 0) ^ (bit2 > 0);
                     let xor_true_float: f32 = if xor_true {1.} else {0.};
@@ -365,7 +367,7 @@ mod tests {
         }
 
         impl FitnessEvaluation for TestFitnessObject {
-            fn fitness(&self, _agent: &mut NeuralNetwork) -> Result<f32, FitnessValueError> {
+            fn fitness(&self, _agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
                 Ok(1.)
             }
         }
