@@ -66,8 +66,9 @@ impl ToPyObject for NeuralNetwork {
             python_friendly_map.insert(&key, self.node_identity_map[key].index().into());
         }
 
-        dict.set_item("genome", self.genome);
-        dict.set_item("graph", self.graph);
+        dict.set_item("genome", &self.genome);
+        //TODO: Enable NeuralNetwork for #[pyclass]
+        //dict.set_item("graph", self.graph);
         dict.set_item("network_output", &self.network_output);
         dict.set_item("node_identity_map", python_friendly_map.into_py_dict(py));
 

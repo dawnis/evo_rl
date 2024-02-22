@@ -80,8 +80,8 @@ impl ToPyObject for EneCode {
         let dict = PyDict::new(py);
         dict.set_item("neuron_id", &self.neuron_id);
         dict.set_item("topology", &self.topology);
-        dict.set_item("neuronal_props", self.neuronal_props);
-        dict.set_item("meta_learning", self.meta_learning);
+        dict.set_item("neuronal_props", &self.neuronal_props);
+        dict.set_item("meta_learning", &self.meta_learning);
         
         dict.into()
     }
@@ -346,7 +346,7 @@ pub struct TopologyGene {
 impl ToPyObject for TopologyGene {
     fn to_object(&self, py: Python<'_>) -> PyObject {
         let dict = PyDict::new(py);
-        dict.set_item("innovation_number", self.innovation_number);
+        dict.set_item("innovation_number", &self.innovation_number);
 
         match self.pin {
             NeuronType::In => dict.set_item("pin", "Input"),
@@ -354,7 +354,7 @@ impl ToPyObject for TopologyGene {
             NeuronType::Hidden => dict.set_item("pin", "Hidden"),
         };
 
-        dict.set_item("inputs", self.inputs);
+        dict.set_item("inputs", &self.inputs);
         dict.set_item("genetic_bias", self.genetic_bias);
         dict.set_item("active", self.active);
 
