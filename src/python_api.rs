@@ -11,28 +11,31 @@ use crate::population::{Population, PopulationConfig, FitnessEvaluation, Fitness
 use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 
 
+#[pyfunction]
+fn log_something() {
+    // This will use the logger installed in `my_module` to send the `info`
+    // message to the Python logging facilities.
+    info!("Something!");
+}
+
 /// A Python module for evo_rl implemented in Rust. The name of this function must match
 /// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
 /// import the module.
 #[pymodule]
 fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    pyo3_log::init();
     m.add_class::<PopulationApi>()?;
     m.add_class::<PyFitnessEvaluator>()?;
+    let _ = m.add_function(wrap_pyfunction!(log_something, m)?);
     Ok(())
 }
 
 //TODO: more verbose output in Python
-//TODO: be able to pass in evaluation function from Python
 //TODO: genome specification from python
 //TODO: nework visualization and exploration
-//TODO: The evaluation of the network should be external to evo_rl library in general. 
-//In order to accomplish this, we should have a Python enabled FitnessEvaluation trait that works
-//with PyNetworkApi 
 
-//see https://pyo3.rs/main/class/call
-//
 
-//TODO: Goal is to pass in a callable class which wraps the evaluation function. 
+//TODO: 
 #[pyclass(name = "FitnessEvaluator")]
 pub struct PyFitnessEvaluator {
     lambda: Py<PyAny>
@@ -40,19 +43,16 @@ pub struct PyFitnessEvaluator {
 
 impl FitnessEvaluation for PyFitnessEvaluator{
     fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
-        //TODO: define the signature of the lambda function.
-        //def evaluate_fitness(x: n.agent_forward):
-        //    runs agent_forward n times and returns fitness value
+
+        let mut agent_mut = agent.clone();
 
         let fitness_value_py_result = Python::with_gil(|py| -> PyResult<f32> {
-            let args = PyTuple::empty_bound(py);
+            let args = PyTuple::empty(py);
         
-            // call object with PyDict
-            
             let kwargs = PyDict::new(py);
-            kwargs.set_item("agent", agent);
+            let _ = kwargs.set_item("agent", agent_mut);
 
-            let lambda_call = self.lambda.call_bound(py, args, Some(&kwargs.as_borrowed()));
+            let lambda_call = self.lambda.call(py, args, Some(kwargs));
 
             match lambda_call {
                 Ok(x) => Ok(x.extract::<f32>(py)?),
@@ -86,7 +86,9 @@ impl<'source> FromPyObject<'source> for PyFitnessEvaluator {
 
 #[pymethods]
 impl PyFitnessEvaluator {
-    fn new(lambda: Py<PyAny>) -> Self {
+    #[new]
+    fn __new__(lambda: Py<PyAny>) -> Self {
+        info!("Building a Fitness Evaluator in Python");
         PyFitnessEvaluator { lambda }
     }
 
@@ -95,10 +97,10 @@ impl PyFitnessEvaluator {
         &self,
         py: Python<'_>,
         args: &PyTuple,
-        kwargs: Option<Bound<'_, PyDict>>,
+        kwargs: Option<&PyDict>,
         ) -> PyResult<Py<PyFloat>> {
 
-        let call_result = self.lambda.call_bound(py, args, kwargs.as_ref())?;
+        let call_result = self.lambda.call(py, args, kwargs)?;
         let call_result_float = call_result.extract::<Py<PyFloat>>(py)?;
 
         Ok(call_result_float)
