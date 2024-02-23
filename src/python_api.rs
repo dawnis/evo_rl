@@ -15,7 +15,7 @@ use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 fn log_something() {
     // This will use the logger installed in `my_module` to send the `info`
     // message to the Python logging facilities.
-    info!("Something!");
+    info!("This is a test of pyo3-logging.");
 }
 
 /// A Python module for evo_rl implemented in Rust. The name of this function must match
@@ -38,7 +38,7 @@ fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 //TODO: 
 #[pyclass(name = "FitnessEvaluator")]
 pub struct PyFitnessEvaluator {
-    lambda: Py<PyAny>
+    pub lambda: Py<PyAny>
 }
 
 impl FitnessEvaluation for PyFitnessEvaluator{
@@ -72,14 +72,19 @@ impl<'source> FromPyObject<'source> for PyFitnessEvaluator {
     fn extract(obj: &'source PyAny) -> PyResult<Self> {
         let py = obj.py();
 
-        let dict = obj.downcast::<PyDict>()?;
+        let py_func: Py<PyAny> = obj.getattr("__call__")?.into();
 
-        let py_function = dict.get_item("lambda")
+
+/*
+        let func = obj.downcast::<PyFunction>()?;
+
+        let py_function = func.get_item("lambda")
             .or_else(|py| Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("Expected a lambda field")))?
             .to_object(py); 
+            */
 
         Ok(
-            PyFitnessEvaluator { lambda: py_function }
+            PyFitnessEvaluator { lambda: py_func }
         )
     }
 }
