@@ -11,6 +11,7 @@ pub mod graph;
 pub mod doctest;
 pub mod population;
 pub mod python_api;
+pub mod agent_wrapper;
 
 use enecode::{TopologyGene, NeuronType};
 use log::*;
