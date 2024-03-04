@@ -6,6 +6,7 @@ use rand::distributions::{Distribution, Uniform};
 use log::*;
 use thiserror::Error;
 
+use crate::agent_wrapper::*;
 use crate::{graph::NeuralNetwork, enecode::EneCode};
 
 ///`FitnessEvaluation` is defines a trait for fitness evaluation of a neural network.
@@ -13,7 +14,7 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 ///- **Parameters**: 
 ///  - `agent`: A mutable reference to a `NeuralNetwork`.
 pub trait FitnessEvaluation {
-    fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError>;
+    fn fitness(&self, agent: &Box<dyn NnWrapper>) -> Result<f32, FitnessValueError>;
 }
 
 /// `PopulationConfig` is a struct that configures `Population` for evolutionary selection.
@@ -94,7 +95,7 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
 ///- **Parameters**: 
 ///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
 pub struct Population {
-    pub agents: Vec<NeuralNetwork>,
+    pub agents: Vec<Box<dyn NnWrapper>>,
     pub size: usize,
     pub topology_mutation_rate: f32,
     pub mutation_rate: f32,
@@ -118,8 +119,13 @@ impl Population {
             agent_vector.push(agent.transfer());
         }
 
+        let wrapped_agent_vector: Vec<Box<dyn NnWrapper>> = agent_vector.drain(..).map(|a| {
+                Box::new(NativeAgent::new(a)) as Box<dyn NnWrapper>
+            }
+        ).collect();
+
         Population {
-            agents: agent_vector,
+            agents: wrapped_agent_vector,
             topology_mutation_rate,
             mutation_rate, 
             mutation_effect_sd: 5.,
@@ -136,7 +142,7 @@ impl Population {
     ///- **Parameters**:
     ///  - `f`: A reference to an object implementing `FitnessEvaluation`.
     fn evaluate_fitness<T: FitnessEvaluation>(&mut self, f: &T) {
-        let fitness_vector: Vec<f32> = self.agents.iter_mut().map(|x| f.fitness(x)).collect::<Result<Vec<f32>, FitnessValueError>>().unwrap();
+        let fitness_vector: Vec<f32> = self.agents.iter().map(|x| f.fitness(x)).collect::<Result<Vec<f32>, FitnessValueError>>().unwrap();
         self.agent_fitness = fitness_vector;
     }
 
@@ -299,6 +305,7 @@ impl Population {
 mod tests {
     use super::*;
     use crate::graph::NeuralNetwork;
+    use crate::agent_wrapper::{NnWrapper, NativeAgent};
     use crate::population::FitnessValueError;
 
     use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
@@ -318,7 +325,7 @@ mod tests {
     }
 
     impl FitnessEvaluation for XorEvaluation {
-        fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
+        fn fitness(&self, agent: Box<dyn NnWrapper>) -> Result<f32, FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
             let complexity = agent.node_identity_map.len() as f32;
@@ -367,7 +374,7 @@ mod tests {
         }
 
         impl FitnessEvaluation for TestFitnessObject {
-            fn fitness(&self, _agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
+            fn fitness(&self, _agent: Box<dyn NnWrapper>) -> Result<f32, FitnessValueError> {
                 Ok(1.)
             }
         }

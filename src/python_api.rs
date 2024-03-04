@@ -7,6 +7,7 @@ use pyo3::Py;
 use std::collections::HashMap;
 use std::cell::Cell;
 use crate::graph::NeuralNetwork;
+use crate::agent_wrapper::*;
 use crate::population::{Population, PopulationConfig, FitnessEvaluation, FitnessValueError};
 use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 
@@ -35,14 +36,14 @@ fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 //TODO: nework visualization and exploration
 
 
-//TODO: 
+//TODO: a layer of abstraction is required over nn to allow it to be used in different environments
 #[pyclass(name = "FitnessEvaluator")]
 pub struct PyFitnessEvaluator {
     pub lambda: Py<PyAny>
 }
 
 impl FitnessEvaluation for PyFitnessEvaluator{
-    fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
+    fn fitness(&self, agent: Box<dyn NnWrapper>)-> Result<f32, FitnessValueError> {
 
         let mut agent_mut = agent.clone();
 
@@ -56,14 +57,14 @@ impl FitnessEvaluation for PyFitnessEvaluator{
 
             match lambda_call {
                 Ok(x) => Ok(x.extract::<f32>(py)?),
-                Err(e) => panic!("Error {}", e)
+                Err(e) => panic!("{}", e)
             }
         });
 
 
         match fitness_value_py_result {
             Ok(fitness) => Ok(fitness),
-            Err(e) => panic!("Error {}", e)
+            Err(e) => panic!("{}", e)
         }
     }
 }
