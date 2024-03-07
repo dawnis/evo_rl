@@ -11,6 +11,27 @@ impl NnInputVector for Vec<f32> {
         self.clone()
     }
 }
+
+pub trait NnWrapperFactory {
+    fn create(&self, agent: NeuralNetwork) -> Box<dyn NnWrapper>;
+}
+
+pub struct AgentFactory {
+    factory_type: String
+}
+
+impl AgentFactory {
+    pub fn new(factory_type: str) -> Self {
+        AgentFactory { factory_type }
+    }
+}
+
+impl NnWrapperFactory for AgentFactory {
+    fn create(&self, agent: NeuralNetwork) -> Box<dyn NnWrapper> {
+        Box::new(NativeAgent::new(agent)) as Box<dyn NnWrapper>
+    }
+}
+
 pub trait NnWrapper: Send {
     fn fwd(&self, vector: Box<dyn NnInputVector>);
 }
@@ -28,6 +49,7 @@ impl NativeAgent {
 
 
 impl NnWrapper for NativeAgent {
+
     fn fwd(&self, vector: Box<dyn NnInputVector>) {
         self.nn.fwd(vector.into_vec_f32());
     }

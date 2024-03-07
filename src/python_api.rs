@@ -43,7 +43,7 @@ pub struct PyFitnessEvaluator {
 }
 
 impl FitnessEvaluation for PyFitnessEvaluator{
-    fn fitness(&self, agent: Box<dyn NnWrapper>)-> Result<f32, FitnessValueError> {
+    fn fitness(&self, agent: &Box<dyn NnWrapper>)-> Result<f32, FitnessValueError> {
 
         let mut agent_mut = agent.clone();
 

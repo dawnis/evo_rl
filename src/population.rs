@@ -94,7 +94,7 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
 ///- **Method `new`**: Constructs a new `Population`.
 ///- **Parameters**: 
 ///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
-pub struct Population {
+pub struct Population<W> where W: NnWrapper {
     pub agents: Vec<Box<dyn NnWrapper>>,
     pub size: usize,
     pub topology_mutation_rate: f32,
@@ -106,9 +106,9 @@ pub struct Population {
     agent_fitness: Vec<f32>,
 }
 
-impl Population {
+impl<W> Population<W> {
 
-    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
+    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32, wrapper: W) -> Self {
         let mut agent_vector: Vec<NeuralNetwork> = Vec::new();
 
         for _idx in 0..population_size {
@@ -120,7 +120,7 @@ impl Population {
         }
 
         let wrapped_agent_vector: Vec<Box<dyn NnWrapper>> = agent_vector.drain(..).map(|a| {
-                Box::new(NativeAgent::new(a)) as Box<dyn NnWrapper>
+                wrapper.create(a)
             }
         ).collect();
 
@@ -305,7 +305,7 @@ impl Population {
 mod tests {
     use super::*;
     use crate::graph::NeuralNetwork;
-    use crate::agent_wrapper::{NnWrapper, NativeAgent};
+    use crate::agent_wrapper::{NnWrapper, AgentFactory};
     use crate::population::FitnessValueError;
 
     use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn test_create_population() {
         let genome = GENOME_EXAMPLE.clone();
-        let population_test = Population::new(genome, 125, 0.8, 0.1, 0.);
+        let population_test = Population::new(genome, 125, 0.8, 0.1, 0., AgentFactory::new("native"));
         assert_eq!(population_test.agents.len(), 125);
     }
 
@@ -380,7 +380,7 @@ mod tests {
         }
 
         let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 125, 0.8, 0.1, 0.);
+        let mut population_test = Population::new(genome, 125, 0.8, 0.1, 0., AgentFactory::new("native"));
 
         population_test.evaluate_fitness(&TestFitnessObject {} );
 
@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn test_truncate_population() {
         let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
+        let mut population_test = Population::new(genome, 10, 0.8, 0.1, 0., AgentFactory::new("native"));
         population_test.agent_fitness = vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
         
         let sorted_fitness_indices = population_test.truncate_population();
@@ -404,7 +404,7 @@ mod tests {
         let mut rng = StdRng::from_seed(seed);
 
         let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 3, 0.8, 0.1, 0.);
+        let mut population_test = Population::new(genome, 3, 0.8, 0.1, 0., AgentFactory::new("native"));
         population_test.agent_fitness = vec![5., 3., 2.];
         let sample: Vec<usize> = vec![0, 1, 2];
 
@@ -419,7 +419,7 @@ mod tests {
         let mut rng = StdRng::from_seed(seed);
 
         let genome = GENOME_EXAMPLE.clone();
-        let population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
+        let population_test = Population::new(genome, 10, 0.8, 0.1, 0., AgentFactory::new("native"));
         let parent_id_vector = vec![0, 1, 3, 5];
 
         let offspring_vec = population_test.generate_offspring(&mut rng, parent_id_vector);
@@ -432,7 +432,7 @@ mod tests {
         setup_logger();
 
         let genome = XOR_GENOME.clone();
-        let mut population = Population::new(genome, 200, 0.1, 0.4, 0.01);
+        let mut population = Population::new(genome, 200, 0.1, 0.4, 0.01, AgentFactory::new("native"));
 
         let ef = XorEvaluation::new();
         
@@ -447,7 +447,7 @@ mod tests {
         setup_logger();
 
         let genome = XOR_GENOME_MINIMAL.clone();
-        let mut population = Population::new(genome, 200, 0.2, 0.4, 0.4);
+        let mut population = Population::new(genome, 200, 0.2, 0.4, 0.4, AgentFactory::new("native"));
 
         let ef = XorEvaluation::new();
 
