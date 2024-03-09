@@ -94,7 +94,7 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
 ///- **Method `new`**: Constructs a new `Population`.
 ///- **Parameters**: 
 ///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
-pub struct Population<W> where W: NnWrapper {
+pub struct Population {
     pub agents: Vec<Box<dyn NnWrapper>>,
     pub size: usize,
     pub topology_mutation_rate: f32,
@@ -106,9 +106,9 @@ pub struct Population<W> where W: NnWrapper {
     agent_fitness: Vec<f32>,
 }
 
-impl<W> Population<W> {
+impl Population {
 
-    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32, wrapper: W) -> Self {
+    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32, wrapper: AgentFactory) -> Self {
         let mut agent_vector: Vec<NeuralNetwork> = Vec::new();
 
         for _idx in 0..population_size {
@@ -325,7 +325,7 @@ mod tests {
     }
 
     impl FitnessEvaluation for XorEvaluation {
-        fn fitness(&self, agent: Box<dyn NnWrapper>) -> Result<f32, FitnessValueError> {
+        fn fitness(&self, agent: &Box<dyn NnWrapper>) -> Result<f32, FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
             let complexity = agent.node_identity_map.len() as f32;

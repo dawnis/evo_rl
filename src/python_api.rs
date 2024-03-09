@@ -174,7 +174,7 @@ impl PopulationApi {
             };
 
 
-            Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
+            Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate, AgentFactory::new("python")))
 
         })?;
 

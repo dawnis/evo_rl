@@ -12,23 +12,22 @@ impl NnInputVector for Vec<f32> {
     }
 }
 
-pub trait NnWrapperFactory {
-    fn create(&self, agent: NeuralNetwork) -> Box<dyn NnWrapper>;
-}
-
 pub struct AgentFactory {
     factory_type: String
 }
 
 impl AgentFactory {
-    pub fn new(factory_type: str) -> Self {
-        AgentFactory { factory_type }
+    pub fn new<S: Into<String>>(s: S) -> Self {
+        AgentFactory { factory_type: s.into() }
     }
-}
 
-impl NnWrapperFactory for AgentFactory {
-    fn create(&self, agent: NeuralNetwork) -> Box<dyn NnWrapper> {
-        Box::new(NativeAgent::new(agent)) as Box<dyn NnWrapper>
+    pub fn create(&self, agent: NeuralNetwork) -> Box<dyn NnWrapper> {
+        if self.factory_type == "python" {
+            Box::new(PythonAgent::new(agent)) as Box<dyn NnWrapper>
+        }
+        else {
+            Box::new(NativeAgent::new(agent)) as Box<dyn NnWrapper>
+        }
     }
 }
 
@@ -36,7 +35,6 @@ pub trait NnWrapper: Send {
     fn fwd(&self, vector: Box<dyn NnInputVector>);
 }
 
-//TODO: Wrapper for native rust
 pub struct NativeAgent {
     nn: NeuralNetwork,
 }
@@ -55,17 +53,20 @@ impl NnWrapper for NativeAgent {
     }
 }
 
-//TODO: this is specific for the python API
 #[pyclass]
-pub struct AgentWrapper {
+pub struct PythonAgent {
     nn: NeuralNetwork,
 }
 
-impl NnWrapper for AgentWrapper {
+impl NnWrapper for PythonAgent {
     fn fwd(&self, vector: Box<dyn NnInputVector>) {
     }
 }
+
 #[pymethods]
-impl AgentWrapper {
+impl PythonAgent {
+    pub fn new(nn: NeuralNetwork) -> Self {
+        PythonAgent { nn }
+    }
 }
 
