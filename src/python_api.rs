@@ -43,15 +43,15 @@ pub struct PyFitnessEvaluator {
 }
 
 impl FitnessEvaluation for PyFitnessEvaluator{
-    fn fitness(&self, agent: &Box<dyn NnWrapper>)-> Result<f32, FitnessValueError> {
+    fn fitness(&self, agent: Agent)-> Result<f32, FitnessValueError> {
 
-        let mut agent_mut = agent.clone();
+        //let mut agent_mut = agent.clone();
 
         let fitness_value_py_result = Python::with_gil(|py| -> PyResult<f32> {
             let args = PyTuple::empty(py);
         
             let kwargs = PyDict::new(py);
-            let _ = kwargs.set_item("agent", agent_mut);
+            let _ = kwargs.set_item("agent", agent);
 
             let lambda_call = self.lambda.call(py, args, Some(kwargs));
 

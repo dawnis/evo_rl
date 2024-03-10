@@ -14,7 +14,7 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 ///- **Parameters**: 
 ///  - `agent`: A mutable reference to a `NeuralNetwork`.
 pub trait FitnessEvaluation {
-    fn fitness(&self, agent: &Box<dyn NnWrapper>) -> Result<f32, FitnessValueError>;
+    fn fitness(&self, agent: Agent) -> Result<f32, FitnessValueError>;
 }
 
 /// `PopulationConfig` is a struct that configures `Population` for evolutionary selection.
@@ -95,7 +95,7 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
 ///- **Parameters**: 
 ///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
 pub struct Population {
-    pub agents: Vec<Box<dyn NnWrapper>>,
+    pub agents: Vec<Agent>,
     pub size: usize,
     pub topology_mutation_rate: f32,
     pub mutation_rate: f32,
@@ -108,24 +108,16 @@ pub struct Population {
 
 impl Population {
 
-    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32, wrapper: AgentFactory) -> Self {
-        let mut agent_vector: Vec<NeuralNetwork> = Vec::new();
+    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32, agent_factory: AgentFactory) -> Self {
+        let mut agent_vector: Vec<Agent> = Vec::new();
 
         for _idx in 0..population_size {
-            let mut agent = NeuralNetwork::new(genome_base.clone());
-            agent.initialize();
-            // Random initialization of the population of all parameters
-            agent.mutate(1., 10., 0.);
-            agent_vector.push(agent.transfer());
+            let agent = agent_factory.create(genome_base);
+            agent_vector.push(agent);
         }
 
-        let wrapped_agent_vector: Vec<Box<dyn NnWrapper>> = agent_vector.drain(..).map(|a| {
-                wrapper.create(a)
-            }
-        ).collect();
-
         Population {
-            agents: wrapped_agent_vector,
+            agents: agent_vector,
             topology_mutation_rate,
             mutation_rate, 
             mutation_effect_sd: 5.,

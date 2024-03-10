@@ -67,7 +67,9 @@ use crate::{graph::NeuralNetwork, sort_genes_by_neuron_type};
 ///         learning_threshold: 0.5,
 ///     });
 /// ```
+
 #[derive(Debug, Clone, PartialEq)]
+#[pyclass]
 pub struct EneCode {
     pub neuron_id: Vec<String>, //equivalent to innovation_number in TopologyGene
     pub topology: Vec<TopologyGene>,
