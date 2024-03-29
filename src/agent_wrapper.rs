@@ -13,86 +13,32 @@ impl NnInputVector for Vec<f32> {
     }
 }
 
-pub struct AgentFactory {
-    factory_type: String
-}
-
-impl AgentFactory {
-    pub fn new<S: Into<String>>(s: S) -> Self {
-        AgentFactory { factory_type: s.into() }
-    }
-
-    pub fn create(&self, genome_base: EneCode) -> Agent {
-            Agent::new(genome_base, self.factory_type)
-    }
-}
-
-pub trait NnWrapper: Send {
-    fn fwd(&self, vector: Box<dyn NnInputVector>);
-}
-
 #[pyclass]
 pub struct Agent {
-    nn: Box<dyn NnWrapper>,
-}
-
-impl ToPyObject for Agent {
-    fn to_object(&self, py: Python<'_>) -> PyObject {
-        let dict = PyDict::new(py);
-        dict.set_item("nn", &self.nn);
-
-        dict.into()
-    }
+    pub nn: Box<NeuralNetwork>,
+    pub fitness: f32,
 }
 
 #[pymethods]
 impl Agent {
     #[new]
-    pub fn new(genome_base: EneCode, environment: String) -> Self {
+    pub fn new(genome_base: EneCode) -> Self {
         let mut agent = NeuralNetwork::new(genome_base.clone());
         agent.initialize();
         // Random initialization of the population of all parameters
         agent.mutate(1., 10., 0.);
-        let nn = if environment == "python" {
-            Box::new(PythonWrapper::new(agent)) as Box<dyn NnWrapper>
-        } else {
-            Box::new(NativeWrapper::new(agent)) as Box<dyn NnWrapper>
-        };
-
-        Agent { nn }
+        Agent {
+            nn: Box::new(agent),
+            fitness: 0.
+        }
     }
-}
 
-pub struct NativeWrapper {
-    nn: NeuralNetwork,
-}
-
-impl NativeWrapper {
-    pub fn new(nn: NeuralNetwork) -> Self {
-        NativeWrapper { nn }
+    pub fn fwd(&self, input: Vec<f32>) {
+        self.nn.fwd(input);
     }
-}
 
-
-impl NnWrapper for NativeWrapper {
-
-    fn fwd(&self, vector: Box<dyn NnInputVector>) {
-        self.nn.fwd(vector.into_vec_f32());
-    }
-}
-
-pub struct PythonWrapper {
-    nn: NeuralNetwork,
-}
-
-impl NnWrapper for PythonWrapper {
-    fn fwd(&self, vector: Box<dyn NnInputVector>) {
-    }
-}
-
-impl PythonWrapper {
-    fn new(nn: NeuralNetwork) -> Self {
-        PythonWrapper { nn }
+    pub fn update_fitness(&mut self, new_fitness: f32) {
+        self.fitness = new_fitness;
     }
 }
 

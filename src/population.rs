@@ -5,17 +5,10 @@ use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
 use log::*;
 use thiserror::Error;
+use std::sync::Arc;
 
 use crate::agent_wrapper::*;
 use crate::{graph::NeuralNetwork, enecode::EneCode};
-
-///`FitnessEvaluation` is defines a trait for fitness evaluation of a neural network.
-///- **Method `fitness`**: Calculates and returns the fitness score of a given neural network agent. 
-///- **Parameters**: 
-///  - `agent`: A mutable reference to a `NeuralNetwork`.
-pub trait FitnessEvaluation {
-    fn fitness(&self, agent: Agent) -> Result<f32, FitnessValueError>;
-}
 
 /// `PopulationConfig` is a struct that configures `Population` for evolutionary selection.
 ///- **Purpose**: Configuration struct for setting hyperparameters of a population.
@@ -28,10 +21,9 @@ pub trait FitnessEvaluation {
 ///- **Method `new`**: Constructs a new `PopulationConfig`.
 ///- **Parameters**: 
 ///  - `evaluator`, `epoch_size`, `mutation_rate_scale_per_epoch`, `mutation_effect_scale_per_epoch`, `rng_seed`.
-pub struct PopulationConfig<F: FitnessEvaluation> {
+pub struct PopulationConfig {
     project_name: String, 
     project_directory: String,
-    evaluator: F, 
     rng: Box<dyn RngCore>,
     epoch_size: usize,
     mutation_rate_scale_per_epoch: f32,
@@ -45,10 +37,9 @@ pub enum FitnessValueError{
     NegativeFitnessError
 }
 
-impl<F: FitnessEvaluation> PopulationConfig<F> {
+impl PopulationConfig {
     pub fn new(project_name: String,
                home_directory: Option<String>,
-               evaluator: F, 
                epoch_size: usize, 
                mutation_rate_scale_per_epoch: f32, 
                mutation_effect_scale_per_epoch: f32,
@@ -71,7 +62,6 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
         PopulationConfig {
             project_name,
             project_directory,
-            evaluator,
             rng,
             epoch_size,
             mutation_rate_scale_per_epoch,
@@ -95,7 +85,7 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
 ///- **Parameters**: 
 ///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
 pub struct Population {
-    pub agents: Vec<Agent>,
+    pub agents: Arc<[Agent]>,
     pub size: usize,
     pub topology_mutation_rate: f32,
     pub mutation_rate: f32,
@@ -108,13 +98,16 @@ pub struct Population {
 
 impl Population {
 
-    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32, agent_factory: AgentFactory) -> Self {
-        let mut agent_vector: Vec<Agent> = Vec::new();
+    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
+        let mut agent_vector:Vec<Agent> = Vec::new();
 
         for _idx in 0..population_size {
-            let agent = agent_factory.create(genome_base);
+            let agent =Agent::new(genome_base);
             agent_vector.push(agent);
         }
+
+        let agent_vector = agent_vector.into_boxed_slice();
+        let agent_vector: Arc<[Agent]> = Arc::from(agent_vector);
 
         Population {
             agents: agent_vector,
@@ -127,15 +120,6 @@ impl Population {
             survival_rate,
             agent_fitness: Vec::new(),
         }
-    }
-
-    ///### `evaluate_fitness`
-    ///- **Purpose**: Evaluates and updates the fitness of each agent in the population.
-    ///- **Parameters**:
-    ///  - `f`: A reference to an object implementing `FitnessEvaluation`.
-    fn evaluate_fitness<T: FitnessEvaluation>(&mut self, f: &T) {
-        let fitness_vector: Vec<f32> = self.agents.iter().map(|x| f.fitness(x)).collect::<Result<Vec<f32>, FitnessValueError>>().unwrap();
-        self.agent_fitness = fitness_vector;
     }
 
     ///### `selection`
@@ -215,7 +199,7 @@ impl Population {
             let parent_1 = parental_ids[a1];
             let parent_2 = *partner_list[a2];
 
-            let offspring_nn = self.agents[parent_1].recombine_enecode(rng, &self.agents[parent_2] );
+            let offspring_nn = self.agents[parent_1].nn.recombine_enecode(rng, &self.agents[parent_2].nn );
 
             match offspring_nn {
                 Ok(nn) => offspring.push(nn),
@@ -238,54 +222,45 @@ impl Population {
     ///  - `pop_config`: Population configuration.
     ///  - `iterations_max`: Maximum number of iterations.
     ///  - `max_fitness_criterion`: Fitness threshold to halt evolution.
-    pub fn evolve<F: FitnessEvaluation>(&mut self, pop_config: PopulationConfig<F>, iterations_max: usize, max_fitness_criterion: f32) {
+    pub fn evolve_step(&mut self, pop_config: PopulationConfig) {
         let mut rng = pop_config.rng;
 
-        //reset generation value
-        self.generation = 0;
+        // Select same population size, but use SUS to select according to fitness
+        let selection = self.selection(&mut rng, self.size);
 
-        while self.generation < iterations_max {
-            self.evaluate_fitness(&pop_config.evaluator);
+        let mut offspring = self.generate_offspring(&mut rng, selection);
 
-            // Select same population size, but use SUS to select according to fitness
-            let selection = self.selection(&mut rng, self.size);
-
-            let mut offspring = self.generate_offspring(&mut rng, selection);
-
-            for agent in offspring.iter_mut() {
-                agent.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
-            }
-
-            self.agents = offspring;
-            self.population_fitness = self.agent_fitness.iter().sum::<f32>() / self.size as f32;
-            self.generation += 1;
-
-            let (best_agent_idx, population_max) = self.agent_fitness
-                                                       .clone()
-                                                       .into_iter()
-                                                       .enumerate()
-                                                       .fold((0, std::f32::MIN), |(idx_max, val_max), (idx, val) | {
-                                                            if val > val_max { (idx, val) } else { (idx_max, val_max) }
-                                                       });
-
-            if self.population_fitness > max_fitness_criterion {
-                break;
-            }
-
-            if self.generation % pop_config.epoch_size == 0 {
-                self.mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
-                self.topology_mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
-                self.mutation_effect_sd *= pop_config.mutation_effect_scale_per_epoch;
-            }
-
-            if (self.generation % 10 == 0) & pop_config.visualize_best_agent {
-                let agent_path = format!("{}{}_{:04}.dot", pop_config.project_directory, pop_config.project_name, self.generation);
-                self.agents[best_agent_idx].write_dot(&agent_path);
-            }
-
-            info!("Observing population fitness {} on generation {} with max of {}", self.population_fitness, self.generation, population_max);
-
+        for agent in offspring.iter_mut() {
+            agent.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
         }
+
+        let offspring = offspring.into_boxed_slice();
+        let offspring: Arc<[Agent]> = Arc::from(offspring);
+
+        self.agents = offspring;
+        self.population_fitness = self.agent_fitness.iter().sum::<f32>() / self.size as f32;
+        self.generation += 1;
+
+        let (best_agent_idx, population_max) = self.agent_fitness
+                                                   .clone()
+                                                   .into_iter()
+                                                   .enumerate()
+                                                   .fold((0, std::f32::MIN), |(idx_max, val_max), (idx, val) | {
+                                                        if val > val_max { (idx, val) } else { (idx_max, val_max) }
+                                                   });
+
+        if self.generation % pop_config.epoch_size == 0 {
+            self.mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
+            self.topology_mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
+            self.mutation_effect_sd *= pop_config.mutation_effect_scale_per_epoch;
+        }
+
+        if (self.generation % 10 == 0) & pop_config.visualize_best_agent {
+            let agent_path = format!("{}{}_{:04}.dot", pop_config.project_directory, pop_config.project_name, self.generation);
+            self.agents[best_agent_idx].nn.write_dot(&agent_path);
+        }
+
+        info!("Observing population fitness {} on generation {} with max of {}", self.population_fitness, self.generation, population_max);
 
     }
 
@@ -297,7 +272,7 @@ impl Population {
 mod tests {
     use super::*;
     use crate::graph::NeuralNetwork;
-    use crate::agent_wrapper::{NnWrapper, AgentFactory};
+    use crate::agent_wrapper::Agent;
     use crate::population::FitnessValueError;
 
     use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
@@ -314,21 +289,16 @@ mod tests {
             }
         }
 
-    }
-
-    impl FitnessEvaluation for XorEvaluation {
-        fn fitness(&self, agent: &Box<dyn NnWrapper>) -> Result<f32, FitnessValueError> {
+        pub fn evaluate_agent(&self, mut agent: Agent) -> Result<(), FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
-            let complexity = agent.node_identity_map.len() as f32;
+            let complexity = agent.nn.node_identity_map.len() as f32;
             let complexity_penalty = 0.01 * complexity;
-
-            let mut agent_mut = agent.clone();
 
             for bit1 in 0..2 {
                 for bit2 in 0..2 {
-                    agent_mut.fwd(vec![bit1 as f32, bit2 as f32]);
-                    let network_output = agent_mut.fetch_network_output();
+                    agent.fwd(vec![bit1 as f32, bit2 as f32]);
+                    let network_output = agent.nn.fetch_network_output();
 
                     let xor_true = (bit1 > 0) ^ (bit2 > 0);
                     let xor_true_float: f32 = if xor_true {1.} else {0.};
@@ -346,7 +316,8 @@ mod tests {
                 Err(FitnessValueError::NegativeFitnessError)
             } 
             else {
-                Ok(fitness_value) 
+                agent.update_fitness(fitness_value);
+                Ok(())
             }
 
         }
@@ -355,34 +326,14 @@ mod tests {
     #[test]
     fn test_create_population() {
         let genome = GENOME_EXAMPLE.clone();
-        let population_test = Population::new(genome, 125, 0.8, 0.1, 0., AgentFactory::new("native"));
+        let population_test = Population::new(genome, 125, 0.8, 0.1, 0.);
         assert_eq!(population_test.agents.len(), 125);
-    }
-
-    #[test]
-    fn test_evaluate_fitness() {
-
-        struct TestFitnessObject {
-        }
-
-        impl FitnessEvaluation for TestFitnessObject {
-            fn fitness(&self, _agent: Box<dyn NnWrapper>) -> Result<f32, FitnessValueError> {
-                Ok(1.)
-            }
-        }
-
-        let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 125, 0.8, 0.1, 0., AgentFactory::new("native"));
-
-        population_test.evaluate_fitness(&TestFitnessObject {} );
-
-        assert_eq!(population_test.agent_fitness.iter().sum::<f32>(), 125.);
     }
 
     #[test]
     fn test_truncate_population() {
         let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 10, 0.8, 0.1, 0., AgentFactory::new("native"));
+        let mut population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
         population_test.agent_fitness = vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
         
         let sorted_fitness_indices = population_test.truncate_population();
@@ -396,7 +347,7 @@ mod tests {
         let mut rng = StdRng::from_seed(seed);
 
         let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 3, 0.8, 0.1, 0., AgentFactory::new("native"));
+        let mut population_test = Population::new(genome, 3, 0.8, 0.1, 0.);
         population_test.agent_fitness = vec![5., 3., 2.];
         let sample: Vec<usize> = vec![0, 1, 2];
 
@@ -411,7 +362,7 @@ mod tests {
         let mut rng = StdRng::from_seed(seed);
 
         let genome = GENOME_EXAMPLE.clone();
-        let population_test = Population::new(genome, 10, 0.8, 0.1, 0., AgentFactory::new("native"));
+        let population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
         let parent_id_vector = vec![0, 1, 3, 5];
 
         let offspring_vec = population_test.generate_offspring(&mut rng, parent_id_vector);
@@ -424,13 +375,20 @@ mod tests {
         setup_logger();
 
         let genome = XOR_GENOME.clone();
-        let mut population = Population::new(genome, 200, 0.1, 0.4, 0.01, AgentFactory::new("native"));
+        let mut population = Population::new(genome, 200, 0.1, 0.4, 0.01);
 
         let ef = XorEvaluation::new();
         
-        let config = PopulationConfig::new("XOR_Predefined_Test".to_string(), None, ef, 50, 0.50, 0.50, false, Some(13));
+        let config = PopulationConfig::new("XOR_Predefined_Test".to_string(), None, 50, 0.50, 0.50, false, Some(13));
 
-        population.evolve(config, 400, 5.8);
+        while (population.generation < 400) & (population.population_fitness < 5.8) {
+            for agent in population.agents.iter() {
+                ef.evaluate_agent(*agent);
+            }
+
+            population.evolve_step(config);
+        }
+
         assert!(population.population_fitness >= 5.2);
     }
 
@@ -439,16 +397,23 @@ mod tests {
         setup_logger();
 
         let genome = XOR_GENOME_MINIMAL.clone();
-        let mut population = Population::new(genome, 200, 0.2, 0.4, 0.4, AgentFactory::new("native"));
+        let mut population = Population::new(genome, 200, 0.2, 0.4, 0.4);
 
         let ef = XorEvaluation::new();
 
         let project_name = "XOR_Test".to_string();
         let project_directory = "agents/XORtest/".to_string();
         
-        let config = PopulationConfig::new(project_name, Some(project_directory), ef, 200, 0.50, 0.50, false, Some(17));
+        let config = PopulationConfig::new(project_name, Some(project_directory), 200, 0.50, 0.50, false, Some(17));
 
-        population.evolve(config, 1000, 5.8);
+        while (population.generation < 1000) & (population.population_fitness < 5.8) {
+            for agent in population.agents.iter() {
+                ef.evaluate_agent(*agent);
+            }
+
+            population.evolve_step(config);
+        }
+
         assert!(population.population_fitness >= 5.2);
     }
 
