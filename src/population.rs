@@ -85,7 +85,7 @@ impl PopulationConfig {
 ///- **Parameters**: 
 ///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
 pub struct Population {
-    pub agents: Arc<[Agent]>,
+    pub agents: Vec<Agent>,
     pub size: usize,
     pub topology_mutation_rate: f32,
     pub mutation_rate: f32,
@@ -102,12 +102,9 @@ impl Population {
         let mut agent_vector:Vec<Agent> = Vec::new();
 
         for _idx in 0..population_size {
-            let agent =Agent::new(genome_base);
+            let agent = Agent::new(genome_base.clone());
             agent_vector.push(agent);
         }
-
-        let agent_vector = agent_vector.into_boxed_slice();
-        let agent_vector: Arc<[Agent]> = Arc::from(agent_vector);
 
         Population {
             agents: agent_vector,
@@ -181,8 +178,8 @@ impl Population {
     ///- **Parameters**:
     ///  - `rng`: A mutable reference to a random number generator.
     ///  - `parental_ids`: Vector of indices representing selected parents.
-    fn generate_offspring<R: Rng>(&self, rng: &mut R, parental_ids: Vec<usize>) -> Vec<NeuralNetwork> {
-        let mut offspring: Vec<NeuralNetwork> = Vec::new();
+    fn generate_offspring<R: Rng>(&self, rng: &mut R, parental_ids: Vec<usize>) -> Vec<Agent> {
+        let mut offspring: Vec<Agent> = Vec::new();
 
         // Given selected parents, mate in pairs until the population size is fulfilled
         let num_parents = parental_ids.len();
@@ -199,10 +196,13 @@ impl Population {
             let parent_1 = parental_ids[a1];
             let parent_2 = *partner_list[a2];
 
-            let offspring_nn = self.agents[parent_1].nn.recombine_enecode(rng, &self.agents[parent_2].nn );
+            let offspring_ec = self.agents[parent_1].nn.recombine_enecode(rng, &self.agents[parent_2].nn );
 
-            match offspring_nn {
-                Ok(nn) => offspring.push(nn),
+            match offspring_ec {
+                Ok(ec) => {
+                    let agent = Agent::new(ec);
+                    offspring.push(agent);
+                }
                 Err(e) => debug!("Recombination failed: {:#?}", e),
             }
 
@@ -231,11 +231,8 @@ impl Population {
         let mut offspring = self.generate_offspring(&mut rng, selection);
 
         for agent in offspring.iter_mut() {
-            agent.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
+            agent.nn.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
         }
-
-        let offspring = offspring.into_boxed_slice();
-        let offspring: Arc<[Agent]> = Arc::from(offspring);
 
         self.agents = offspring;
         self.population_fitness = self.agent_fitness.iter().sum::<f32>() / self.size as f32;
@@ -289,7 +286,7 @@ mod tests {
             }
         }
 
-        pub fn evaluate_agent(&self, mut agent: Agent) -> Result<(), FitnessValueError> {
+        pub fn evaluate_agent(&self, agent: &mut Agent) -> Result<(), FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
             let complexity = agent.nn.node_identity_map.len() as f32;
@@ -379,13 +376,13 @@ mod tests {
 
         let ef = XorEvaluation::new();
         
-        let config = PopulationConfig::new("XOR_Predefined_Test".to_string(), None, 50, 0.50, 0.50, false, Some(13));
 
         while (population.generation < 400) & (population.population_fitness < 5.8) {
-            for agent in population.agents.iter() {
-                ef.evaluate_agent(*agent);
+            for agent in population.agents.iter_mut() {
+                ef.evaluate_agent(agent);
             }
 
+            let config = PopulationConfig::new("XOR_Predefined_Test".to_string(), None, 50, 0.50, 0.50, false, Some(13));
             population.evolve_step(config);
         }
 
@@ -401,16 +398,15 @@ mod tests {
 
         let ef = XorEvaluation::new();
 
-        let project_name = "XOR_Test".to_string();
-        let project_directory = "agents/XORtest/".to_string();
-        
-        let config = PopulationConfig::new(project_name, Some(project_directory), 200, 0.50, 0.50, false, Some(17));
-
         while (population.generation < 1000) & (population.population_fitness < 5.8) {
-            for agent in population.agents.iter() {
-                ef.evaluate_agent(*agent);
+            for agent in population.agents.iter_mut() {
+                ef.evaluate_agent(agent);
             }
 
+            let project_name = "XOR_Test".to_string();
+            let project_directory = "agents/XORtest/".to_string();
+
+            let config = PopulationConfig::new(project_name, Some(project_directory), 200, 0.50, 0.50, false, Some(17));
             population.evolve_step(config);
         }
 

@@ -122,11 +122,9 @@ impl NeuralNetwork {
     }
 
     /// Cross over recombination of genetic code
-    pub fn recombine_enecode<R: Rng>(&self, rng: &mut R, partner: &NeuralNetwork) -> Result<NeuralNetwork, GraphConstructionError> {
+    pub fn recombine_enecode<R: Rng>(&self, rng: &mut R, partner: &NeuralNetwork) -> Result<EneCode, GraphConstructionError> {
         if let Ok(offspring_enecode) = self.genome.recombine(rng, &partner.genome) {
-            let mut offspring_nn = NeuralNetwork::new(offspring_enecode);
-            offspring_nn.initialize();
-            Ok(offspring_nn.transfer())
+            Ok(offspring_enecode)
         } else {
             Err(GraphConstructionError::EnecodeRecombinationError)
         }
@@ -570,7 +568,9 @@ mod tests {
         let mut network2 = NeuralNetwork::new(ene2);
         network2.initialize();
 
-        let mut recombined = network1.recombine_enecode(&mut rng, &network2).unwrap();
+        let recombined_enecode = network1.recombine_enecode(&mut rng, &network2).unwrap();
+
+        let mut recombined: NeuralNetwork = NeuralNetwork::new(recombined_enecode);
         info!("Offspring genome: {:#?}", recombined.genome.topology);
         recombined.fwd(vec![1.]);
 
