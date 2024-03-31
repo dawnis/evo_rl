@@ -1,11 +1,11 @@
 //!This module focuses on implementing an evolutionary algorithm for neural network optimization. It uses Stochastic Universal Sampling (SUS) and Truncation for selection within a population of neural network agents.
 
 use rand::Rng;
-use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
 use log::*;
 use thiserror::Error;
 use std::sync::Arc;
+use crate::rng_box;
 
 use crate::agent_wrapper::*;
 use crate::{graph::NeuralNetwork, enecode::EneCode};
@@ -24,7 +24,7 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 pub struct PopulationConfig {
     project_name: Arc<str>, 
     project_directory: Arc<str>,
-    rng: Box<dyn RngCore>,
+    rng_seed: Option<u8>,
     epoch_size: usize,
     mutation_rate_scale_per_epoch: f32,
     mutation_effect_scale_per_epoch: f32,
@@ -46,14 +46,6 @@ impl PopulationConfig {
                visualize_best_agent: bool,
                rng_seed: Option<u8>) -> Self {
 
-        let mut rng: Box<dyn RngCore> = match rng_seed {
-            Some(seedu8) => {
-                let seed = [seedu8; 32];
-                Box::new(StdRng::from_seed(seed))
-            }
-            None => Box::new(rand::thread_rng())
-        };
-
         let project_directory: Arc<str> = match home_directory {
             Some(dir) => dir,
             None => "".into(),
@@ -62,7 +54,7 @@ impl PopulationConfig {
         PopulationConfig {
             project_name,
             project_directory,
-            rng,
+            rng_seed,
             epoch_size,
             mutation_rate_scale_per_epoch,
             mutation_effect_scale_per_epoch,
@@ -124,7 +116,7 @@ impl Population {
     ///- **Parameters**:
     ///  - `rng`: A mutable reference to a random number generator.
     ///  - `n_select`: Number of agents to select.
-    fn selection<R: Rng>(&self, rng: &mut R, n_select: usize) -> Vec<usize> {
+    fn selection(&self, rng_seed: Option<u8>, n_select: usize) -> Vec<usize> {
         let truncated_population = self.truncate_population();
         self.stochastic_universal_sampling(rng, truncated_population, n_select)
     }
@@ -178,7 +170,7 @@ impl Population {
     ///- **Parameters**:
     ///  - `rng`: A mutable reference to a random number generator.
     ///  - `parental_ids`: Vector of indices representing selected parents.
-    fn generate_offspring<R: Rng>(&self, rng: &mut R, parental_ids: Vec<usize>) -> Vec<Agent> {
+    fn generate_offspring(&self, rng_seed: Option<u8>, parental_ids: Vec<usize>) -> Vec<Agent> {
         let mut offspring: Vec<Agent> = Vec::new();
 
         // Given selected parents, mate in pairs until the population size is fulfilled
@@ -188,6 +180,8 @@ impl Population {
 
         let mut n_mate_attempts = 0;
 
+        let mut rng = rng_box(rng_seed);
+
         while offspring.len() < self.size {
             let a1 = rng.gen_range(0..num_parents);
             let partner_list: Vec<&usize> = parental_ids.iter().filter(|&&p| p != a1).collect();
@@ -196,7 +190,7 @@ impl Population {
             let parent_1 = parental_ids[a1];
             let parent_2 = *partner_list[a2];
 
-            let offspring_ec = self.agents[parent_1].nn.recombine_enecode(rng, &self.agents[parent_2].nn );
+            let offspring_ec = self.agents[parent_1].nn.recombine_enecode(&mut rng, &self.agents[parent_2].nn );
 
             match offspring_ec {
                 Ok(ec) => {
@@ -223,12 +217,11 @@ impl Population {
     ///  - `iterations_max`: Maximum number of iterations.
     ///  - `max_fitness_criterion`: Fitness threshold to halt evolution.
     pub fn evolve_step(&mut self, pop_config: &PopulationConfig) {
-        let mut rng = &pop_config.rng;
 
         // Select same population size, but use SUS to select according to fitness
-        let selection = self.selection(&mut rng, self.size);
+        let selection = self.selection(pop_config.rng_seed, self.size);
 
-        let mut offspring = self.generate_offspring(&mut rng, selection);
+        let mut offspring = self.generate_offspring(pop_config.rng_seed, selection);
 
         for agent in offspring.iter_mut() {
             agent.nn.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
