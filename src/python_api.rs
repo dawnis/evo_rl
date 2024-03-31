@@ -86,10 +86,10 @@ impl PopulationApi {
         })
     }
 
-    pub fn evolve_step(&self) {
-        let test_name = String::from("test_name");
-        let step_configuration = PopulationConfig::new(test_name, None, 200, 0.50, 0.50, false, Some(17));
-        self.population.evolve_step(step_configuration);
+    pub fn evolve_step(&mut self) {
+        let test_name: &str = "test_name";
+        let step_configuration = PopulationConfig::new(Arc::from(test_name), None, 200, 0.50, 0.50, false, Some(17));
+        self.population.evolve_step(&step_configuration);
     }
 
 

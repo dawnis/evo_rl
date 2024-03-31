@@ -22,8 +22,8 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 ///- **Parameters**: 
 ///  - `evaluator`, `epoch_size`, `mutation_rate_scale_per_epoch`, `mutation_effect_scale_per_epoch`, `rng_seed`.
 pub struct PopulationConfig {
-    project_name: String, 
-    project_directory: String,
+    project_name: Arc<str>, 
+    project_directory: Arc<str>,
     rng: Box<dyn RngCore>,
     epoch_size: usize,
     mutation_rate_scale_per_epoch: f32,
@@ -38,8 +38,8 @@ pub enum FitnessValueError{
 }
 
 impl PopulationConfig {
-    pub fn new(project_name: String,
-               home_directory: Option<String>,
+    pub fn new(project_name: Arc<str>,
+               home_directory: Option<Arc<str>>,
                epoch_size: usize, 
                mutation_rate_scale_per_epoch: f32, 
                mutation_effect_scale_per_epoch: f32,
@@ -54,9 +54,9 @@ impl PopulationConfig {
             None => Box::new(rand::thread_rng())
         };
 
-        let project_directory: String = match home_directory {
+        let project_directory: Arc<str> = match home_directory {
             Some(dir) => dir,
-            None => String::from(""),
+            None => "".into(),
         };
 
         PopulationConfig {
@@ -222,8 +222,8 @@ impl Population {
     ///  - `pop_config`: Population configuration.
     ///  - `iterations_max`: Maximum number of iterations.
     ///  - `max_fitness_criterion`: Fitness threshold to halt evolution.
-    pub fn evolve_step(&mut self, pop_config: PopulationConfig) {
-        let mut rng = pop_config.rng;
+    pub fn evolve_step(&mut self, pop_config: &PopulationConfig) {
+        let mut rng = &pop_config.rng;
 
         // Select same population size, but use SUS to select according to fitness
         let selection = self.selection(&mut rng, self.size);
@@ -377,13 +377,15 @@ mod tests {
         let ef = XorEvaluation::new();
         
 
+        let project_name: &str = "XOR_Predefined_Test";
+        let config = PopulationConfig::new(Arc::from(project_name), None, 50, 0.50, 0.50, false, Some(13));
+
         while (population.generation < 400) & (population.population_fitness < 5.8) {
             for agent in population.agents.iter_mut() {
                 ef.evaluate_agent(agent);
             }
 
-            let config = PopulationConfig::new("XOR_Predefined_Test".to_string(), None, 50, 0.50, 0.50, false, Some(13));
-            population.evolve_step(config);
+            population.evolve_step(&config);
         }
 
         assert!(population.population_fitness >= 5.2);
@@ -398,16 +400,17 @@ mod tests {
 
         let ef = XorEvaluation::new();
 
+        let project_name: &str  = "XOR_Test";
+        let project_directory: &str = "agents/XORtest/";
+
+        let config = PopulationConfig::new(Arc::from(project_name), Some(Arc::from(project_directory)), 200, 0.50, 0.50, false, Some(17));
         while (population.generation < 1000) & (population.population_fitness < 5.8) {
+
             for agent in population.agents.iter_mut() {
                 ef.evaluate_agent(agent);
             }
 
-            let project_name = "XOR_Test".to_string();
-            let project_directory = "agents/XORtest/".to_string();
-
-            let config = PopulationConfig::new(project_name, Some(project_directory), 200, 0.50, 0.50, false, Some(17));
-            population.evolve_step(config);
+            population.evolve_step(&config);
         }
 
         assert!(population.population_fitness >= 5.2);
