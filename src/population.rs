@@ -86,7 +86,6 @@ pub struct Population {
     pub generation: usize,
     pub population_fitness: f32,
     survival_rate: f32,
-    agent_fitness: Vec<f32>,
 }
 
 impl Population {
@@ -111,7 +110,6 @@ impl Population {
             generation: 0,
             population_fitness: 0.,
             survival_rate,
-            agent_fitness: Vec::new(),
         }
     }
 
@@ -130,7 +128,7 @@ impl Population {
     ///- **Parameters**:
     ///  - `rng`, `sample`, `n_select`.
     fn stochastic_universal_sampling(&self, rng_seed: Option<u8>, sample: Vec<usize>, n_select: usize) -> Vec<usize> {
-        let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agent_fitness[idx]).collect();
+        let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agents[idx].fitness).collect();
         let total_population_fitness: f32 = sample_fitness.iter().sum();
         let point_spacing = total_population_fitness / (n_select as f32);
         let u = Uniform::from(0_f32..point_spacing);
@@ -163,7 +161,8 @@ impl Population {
     ///- **Returns**: A vector of indices representing the surviving population.
     fn truncate_population(&self) -> Vec<usize> {
         let n_survival = (self.agents.len() as f32) * self.survival_rate;
-        let mut fitness_pairing: Vec<_> = (0..self.agents.len()).zip(&self.agent_fitness).collect();
+        let agent_fitness: Vec<f32> = self.agents.iter().map( |a| a.fitness).collect();
+        let mut fitness_pairing: Vec<_> = (0..self.agents.len()).zip(agent_fitness).collect();
         fitness_pairing.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         let sorted_data: Vec<usize> = fitness_pairing.into_iter().map(|(a, _)| a).collect();
 
@@ -234,16 +233,8 @@ impl Population {
         }
 
         self.agents = offspring;
-        self.population_fitness = self.agent_fitness.iter().sum::<f32>() / self.size as f32;
-        self.generation += 1;
 
-        let (best_agent_idx, population_max) = self.agent_fitness
-                                                   .clone()
-                                                   .into_iter()
-                                                   .enumerate()
-                                                   .fold((0, std::f32::MIN), |(idx_max, val_max), (idx, val) | {
-                                                        if val > val_max { (idx, val) } else { (idx_max, val_max) }
-                                                   });
+        self.generation += 1;
 
         if self.generation % pop_config.epoch_size == 0 {
             self.mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
@@ -251,13 +242,29 @@ impl Population {
             self.mutation_effect_sd *= pop_config.mutation_effect_scale_per_epoch;
         }
 
+    }
+
+    pub fn update_population_fitness(&mut self) {
+        let agent_fitness_vector: Vec<f32> = self.agents.iter().map(|a| a.fitness).collect();
+        self.population_fitness = agent_fitness_vector.iter().sum::<f32>() / self.size as f32;
+    }
+
+    pub fn report(&self, pop_config: &PopulationConfig) {
+        let agent_fitness_vector: Vec<f32> = self.agents.iter().map(|a| a.fitness).collect();
+        let (best_agent_idx, population_max) = agent_fitness_vector
+                                                   .clone()
+                                                   .into_iter()
+                                                   .enumerate()
+                                                   .fold((0, std::f32::MIN), |(idx_max, val_max), (idx, val) | {
+                                                        if val > val_max { (idx, val) } else { (idx_max, val_max) }
+                                                   });
+
         if (self.generation % 10 == 0) & pop_config.visualize_best_agent {
             let agent_path = format!("{}{}_{:04}.dot", pop_config.project_directory, pop_config.project_name, self.generation);
             self.agents[best_agent_idx].nn.write_dot(&agent_path);
         }
 
         info!("Observing population fitness {} on generation {} with max of {}", self.population_fitness, self.generation, population_max);
-
     }
 
 }
@@ -312,6 +319,7 @@ mod tests {
                 Err(FitnessValueError::NegativeFitnessError)
             } 
             else {
+                debug!("Updating agent with fitness value {}", fitness_value);
                 agent.update_fitness(fitness_value);
                 Ok(())
             }
@@ -330,7 +338,11 @@ mod tests {
     fn test_truncate_population() {
         let genome = GENOME_EXAMPLE.clone();
         let mut population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
-        population_test.agent_fitness = vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
+
+        let agent_fitness_vector = vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
+        for (agent, fitness) in population_test.agents.iter_mut().zip(agent_fitness_vector.iter()) {
+            agent.fitness = *fitness;
+        }
         
         let sorted_fitness_indices = population_test.truncate_population();
 
@@ -343,7 +355,10 @@ mod tests {
 
         let genome = GENOME_EXAMPLE.clone();
         let mut population_test = Population::new(genome, 3, 0.8, 0.1, 0.);
-        population_test.agent_fitness = vec![5., 3., 2.];
+        let agent_fitness_vector  = vec![5., 3., 2.];
+        for (agent, fitness) in population_test.agents.iter_mut().zip(agent_fitness_vector.iter()) {
+            agent.fitness = *fitness;
+        }
         let sample: Vec<usize> = vec![0, 1, 2];
 
         let sus: Vec<usize> = population_test.stochastic_universal_sampling(seed, sample, 10);
@@ -381,6 +396,8 @@ mod tests {
                 ef.evaluate_agent(agent);
             }
 
+            population.update_population_fitness();
+            population.report(&config);
             population.evolve_step(&config);
         }
 
@@ -399,14 +416,17 @@ mod tests {
         let project_name: &str  = "XOR_Test";
         let project_directory: &str = "agents/XORtest/";
 
-        let config = PopulationConfig::new(Arc::from(project_name), Some(Arc::from(project_directory)), 200, 0.50, 0.50, false, Some(17));
+        let config = PopulationConfig::new(Arc::from(project_name), Some(Arc::from(project_directory)), 200, 0.50, 0.50, false, Some(237));
         while (population.generation < 1000) & (population.population_fitness < 5.8) {
 
             for agent in population.agents.iter_mut() {
                 ef.evaluate_agent(agent);
             }
 
+            population.update_population_fitness();
+            population.report(&config);
             population.evolve_step(&config);
+            
         }
 
         assert!(population.population_fitness >= 5.2);
