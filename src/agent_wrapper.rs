@@ -23,18 +23,20 @@ pub struct Agent {
 impl Agent {
     #[new]
     pub fn new(genome_base: EneCode) -> Self {
-        let mut agent = NeuralNetwork::new(genome_base.clone());
-        agent.initialize();
-        // Random initialization of the population of all parameters
-        agent.mutate(1., 10., 0.);
+        let agent = NeuralNetwork::new(genome_base.clone());
+
         Agent {
             nn: Box::new(agent),
             fitness: 0.
         }
     }
 
-    pub fn fwd(&self, input: Vec<f32>) {
+    pub fn fwd(&mut self, input: Vec<f32>) {
         self.nn.fwd(input);
+    }
+
+    pub fn mutate(&mut self, mutation_rate: f32, mutation_sd: f32, topology_mutation_rate: f32) {
+        self.nn.mutate(mutation_rate, mutation_sd, topology_mutation_rate);
     }
 
     pub fn update_fitness(&mut self, new_fitness: f32) {

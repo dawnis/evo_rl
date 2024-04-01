@@ -451,8 +451,7 @@ mod tests {
     fn test_enecode_from_neural_network() {
         let genome = GENOME_EXAMPLE.clone();
         let genome_comparison = GENOME_EXAMPLE.clone();
-        let mut network_example = NeuralNetwork::new(genome);
-        network_example.initialize();
+        let network_example = NeuralNetwork::new(genome);
 
         let test_enecode = EneCode::from(&network_example);
 

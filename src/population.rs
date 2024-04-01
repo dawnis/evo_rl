@@ -2,6 +2,7 @@
 
 use rand::Rng;
 use rand::distributions::{Distribution, Uniform};
+use rand::prelude::*;
 use log::*;
 use thiserror::Error;
 use std::sync::Arc;
@@ -94,7 +95,10 @@ impl Population {
         let mut agent_vector:Vec<Agent> = Vec::new();
 
         for _idx in 0..population_size {
-            let agent = Agent::new(genome_base.clone());
+            let mut agent = Agent::new(genome_base.clone());
+
+            //Random mutation of newly initialized population members
+            agent.mutate(1., 10., 0.);
             agent_vector.push(agent);
         }
 
@@ -118,14 +122,14 @@ impl Population {
     ///  - `n_select`: Number of agents to select.
     fn selection(&self, rng_seed: Option<u8>, n_select: usize) -> Vec<usize> {
         let truncated_population = self.truncate_population();
-        self.stochastic_universal_sampling(rng, truncated_population, n_select)
+        self.stochastic_universal_sampling(rng_seed, truncated_population, n_select)
     }
 
     ///### `stochastic_universal_sampling`
     ///- **Purpose**: Implements SUS for efficient selection in evolutionary algorithms.
     ///- **Parameters**:
     ///  - `rng`, `sample`, `n_select`.
-    fn stochastic_universal_sampling<R: Rng>(&self, rng: &mut R, sample: Vec<usize>, n_select: usize) -> Vec<usize> {
+    fn stochastic_universal_sampling(&self, rng_seed: Option<u8>, sample: Vec<usize>, n_select: usize) -> Vec<usize> {
         let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agent_fitness[idx]).collect();
         let total_population_fitness: f32 = sample_fitness.iter().sum();
         let point_spacing = total_population_fitness / (n_select as f32);
@@ -134,7 +138,9 @@ impl Population {
         let mut selection: Vec<usize>  = Vec::new();
 
         //start the roulette pointer at a point between 0 and the first spacing
-        let mut roulette_pointer = u.sample(rng); 
+        
+        let mut rng = rng_box(rng_seed);
+        let mut roulette_pointer = u.sample(&mut rng); 
 
         for _p in 0..n_select {
             let mut idx: usize = 0;
@@ -224,7 +230,7 @@ impl Population {
         let mut offspring = self.generate_offspring(pop_config.rng_seed, selection);
 
         for agent in offspring.iter_mut() {
-            agent.nn.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
+            agent.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
         }
 
         self.agents = offspring;
@@ -333,29 +339,26 @@ mod tests {
 
     #[test]
     fn test_stochastic_universal_sampling() {
-        let seed = [17; 32]; // Fixed seed for determinism
-        let mut rng = StdRng::from_seed(seed);
+        let seed = Some(17); // Fixed seed for determinism
 
         let genome = GENOME_EXAMPLE.clone();
         let mut population_test = Population::new(genome, 3, 0.8, 0.1, 0.);
         population_test.agent_fitness = vec![5., 3., 2.];
         let sample: Vec<usize> = vec![0, 1, 2];
 
-        let sus: Vec<usize> = population_test.stochastic_universal_sampling(&mut rng, sample, 10);
+        let sus: Vec<usize> = population_test.stochastic_universal_sampling(seed, sample, 10);
         assert_eq!(vec![0, 0, 0, 0, 0, 1, 1, 1, 2, 2], sus);
     }
 
 
     #[test]
     fn test_generate_offspring() {
-        let seed = [17; 32]; // Fixed seed for determinism
-        let mut rng = StdRng::from_seed(seed);
 
         let genome = GENOME_EXAMPLE.clone();
         let population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
         let parent_id_vector = vec![0, 1, 3, 5];
 
-        let offspring_vec = population_test.generate_offspring(&mut rng, parent_id_vector);
+        let offspring_vec = population_test.generate_offspring(Some(17), parent_id_vector);
 
         assert_eq!(offspring_vec.len(), 10);
     }

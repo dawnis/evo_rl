@@ -40,7 +40,6 @@ use pyo3::types::{PyDict, IntoPyDict};
 /// // Assume genome is a properly initialized EneCode
 /// # let genome = GENOME_EXAMPLE.clone();
 /// let mut network = NeuralNetwork::new(genome);
-/// network.initialize();
 ///
 /// // Assume input is a properly initialized Vec<f32>
 /// # let input: Vec<f32> = vec![0.];
@@ -80,17 +79,19 @@ impl NeuralNetwork {
 
     /// Create a new `NeuralNetwork` from an `EneCode` genome.
     pub fn new(genome: EneCode) -> Self {
-        NeuralNetwork {
+        let mut nn = NeuralNetwork {
             genome: genome.clone(),
             graph: DiGraph::new(),
             node_identity_map: HashMap::new(),
             network_output: Vec::new(),
-        }
+        };
+        nn.initialize();
+        nn
     }
 
     /// Initialize the neural network graph from the genome.
     /// Adds neurons as nodes and synaptic connections as edges.
-    pub fn initialize(&mut self) {
+    fn initialize(&mut self) {
 
         //Add all neuron nodes
         for neuron_id in &self.genome.neuron_id[..] {
@@ -454,7 +455,6 @@ mod tests {
     fn test_fwd_fetch_network_output() {
         let genome = GENOME_EXAMPLE.clone();
         let mut network_example = NeuralNetwork::new(genome);
-        network_example.initialize();
 
         network_example.fwd(vec![0.]);
         // Test the forward pass and verify that the network_output is as expected
@@ -473,7 +473,6 @@ mod tests {
     fn test_mutate_synapses() {
         let genome = GENOME_EXAMPLE.clone();
         let mut network_example = NeuralNetwork::new(genome);
-        network_example.initialize();
 
         let gt = GENOME_EXAMPLE.clone();
         let n1gene = gt.topology_gene(&String::from("N1"));
@@ -501,7 +500,6 @@ mod tests {
     fn test_mutate_topology() {
         let genome = GENOME_EXAMPLE.clone();
         let mut network_example = NeuralNetwork::new(genome);
-        network_example.initialize();
 
         let epsilon: f32 = 1.;
 
@@ -528,7 +526,6 @@ mod tests {
     fn test_mutate() {
         let genome = GENOME_EXAMPLE.clone();
         let mut network_example = NeuralNetwork::new(genome);
-        network_example.initialize();
 
         let gt = GENOME_EXAMPLE.clone();
         let n1gene = gt.topology_gene(&String::from("N1"));
@@ -562,15 +559,14 @@ mod tests {
 
         let ene1 = GENOME_EXAMPLE.clone();
         let mut network1 = NeuralNetwork::new(ene1);
-        network1.initialize();
 
         let ene2 = GENOME_EXAMPLE2.clone();
         let mut network2 = NeuralNetwork::new(ene2);
-        network2.initialize();
 
         let recombined_enecode = network1.recombine_enecode(&mut rng, &network2).unwrap();
 
         let mut recombined: NeuralNetwork = NeuralNetwork::new(recombined_enecode);
+
         info!("Offspring genome: {:#?}", recombined.genome.topology);
         recombined.fwd(vec![1.]);
 
@@ -588,7 +584,6 @@ mod tests {
 
         let ene1 = GENOME_EXAMPLE.clone();
         let mut network1 = NeuralNetwork::new(ene1);
-        network1.initialize();
 
         network1.duplicate_neuron(network1.node_identity_map["N1"]);
 
@@ -611,7 +606,6 @@ mod tests {
 
         let xor = XOR_GENOME.clone();
         let mut network = NeuralNetwork::new(xor);
-        network.initialize();
 
         let a = network.node_identity_map["A"];
         let b = network.node_identity_map["B"];
@@ -637,7 +631,6 @@ mod tests {
 
         let xor = XOR_GENOME.clone();
         let mut network = NeuralNetwork::new(xor);
-        network.initialize();
 
         let b = network.node_identity_map["B"];
         network.remove_neuron(b);
