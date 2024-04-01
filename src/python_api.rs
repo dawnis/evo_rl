@@ -35,7 +35,8 @@ fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 /// Wrapper for Population
 struct PopulationApi {
     population: Box<Population>,
-    config: Py<PyDict>
+    evolve_config: Box<PopulationConfig>,
+    pop_config: Py<PyDict>
 }
 
 #[pymethods]
@@ -74,22 +75,35 @@ impl PopulationApi {
 
         })?;
 
-        let test_name = String::from("python_test");
-        //let project_name = "XOR_Test".to_string();
-        //let project_directory = "agents/XORtest/".to_string();
-
+        let test_name: &str = "test_name";
+        let evolve_config = PopulationConfig::new(Arc::from(test_name), None, 200, 0.50, 0.50, false, Some(17));
 
 
         Ok(PopulationApi {
             population: Box::new(population),
-            config: pyconfig
+            evolve_config: Box::new(evolve_config),
+            pop_config: pyconfig
         })
     }
 
     pub fn evolve_step(&mut self) {
-        let test_name: &str = "test_name";
-        let step_configuration = PopulationConfig::new(Arc::from(test_name), None, 200, 0.50, 0.50, false, Some(17));
-        self.population.evolve_step(&step_configuration);
+        self.population.evolve_step(&self.evolve_config);
+    }
+
+    pub fn update_population_fitness(&mut self) {
+        self.population.update_population_fitness();
+    }
+
+    pub fn report(&self) {
+        self.population.report(&self.evolve_config);
+    }
+
+    pub fn current_generation(&self) -> usize {
+        self.population.generation
+    }
+
+    pub fn fitness(&self) -> f32 {
+        self.population.population_fitness
     }
 
 
