@@ -35,6 +35,10 @@ impl Agent {
         self.nn.fwd(input);
     }
 
+    pub fn output(&self) -> Vec<f32> {
+        self.nn.fetch_network_output()
+    }
+
     pub fn mutate(&mut self, mutation_rate: f32, mutation_sd: f32, topology_mutation_rate: f32) {
         self.nn.mutate(mutation_rate, mutation_sd, topology_mutation_rate);
     }

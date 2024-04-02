@@ -98,12 +98,41 @@ impl PopulationApi {
         self.population.report(&self.evolve_config);
     }
 
-    pub fn current_generation(&self) -> usize {
-        self.population.generation
+    pub fn agent_fwd(&mut self, idx: usize, input: Py<PyList>) {
+        let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+            let input_vec = input.as_ref(py);
+            input_vec.iter()
+                .map(|p| p.extract::<f32>())
+                .collect()
+            });
+
+        match py_vec {
+            Ok(v) => self.population.agents[idx].fwd(v),
+            err => error!("PyError: {:?}", err)
+        }
+
     }
 
-    pub fn fitness(&self) -> f32 {
-        self.population.population_fitness
+    pub fn agent_out(&self, idx: usize) -> PyResult<Vec<f32>> {
+        Ok(self.population.agents[idx].output())
+    }
+
+    pub fn agent_complexity(&self, idx: usize) -> PyResult<usize> {
+        Ok(self.population.agents[idx].nn.node_identity_map.len())
+    }
+
+    pub fn set_agent_fitness(&mut self, idx: usize, value: f32) {
+        self.population.agents[idx].fitness = value;
+    }
+
+    #[getter(generation)]
+    fn generation(&self) -> PyResult<usize> {
+        Ok(self.population.generation)
+    }
+
+    #[getter(fitness)]
+    fn fitness(&self) -> PyResult<f32> {
+        Ok(self.population.population_fitness)
     }
 
 
