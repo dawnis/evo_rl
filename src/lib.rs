@@ -11,7 +11,9 @@ pub mod graph;
 pub mod doctest;
 pub mod population;
 pub mod python_api;
+pub mod agent_wrapper;
 
+use rand::prelude::*;
 use enecode::{TopologyGene, NeuronType};
 use log::*;
 use std::collections::HashMap;
@@ -22,6 +24,17 @@ pub fn setup_logger() {
     pretty_env_logger::try_init().ok();
 }
 
+
+/// Returns an rng based on Option<seed>
+pub fn rng_box(rng_seed: Option<u8>) -> Box<dyn RngCore> {
+        match rng_seed {
+            Some(seedu8) => {
+                let seed = [seedu8; 32];
+                Box::new(StdRng::from_seed(seed))
+            }
+            None => Box::new(rand::thread_rng())
+        }
+}
 
 /// Convenience function to easily create maps when specifying gene strings. 
 pub fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {

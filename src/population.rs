@@ -1,20 +1,15 @@
 //!This module focuses on implementing an evolutionary algorithm for neural network optimization. It uses Stochastic Universal Sampling (SUS) and Truncation for selection within a population of neural network agents.
 
 use rand::Rng;
-use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
+use rand::prelude::*;
 use log::*;
 use thiserror::Error;
+use std::sync::Arc;
+use crate::rng_box;
 
+use crate::agent_wrapper::*;
 use crate::{graph::NeuralNetwork, enecode::EneCode};
-
-///`FitnessEvaluation` is defines a trait for fitness evaluation of a neural network.
-///- **Method `fitness`**: Calculates and returns the fitness score of a given neural network agent. 
-///- **Parameters**: 
-///  - `agent`: A mutable reference to a `NeuralNetwork`.
-pub trait FitnessEvaluation {
-    fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError>;
-}
 
 /// `PopulationConfig` is a struct that configures `Population` for evolutionary selection.
 ///- **Purpose**: Configuration struct for setting hyperparameters of a population.
@@ -27,11 +22,10 @@ pub trait FitnessEvaluation {
 ///- **Method `new`**: Constructs a new `PopulationConfig`.
 ///- **Parameters**: 
 ///  - `evaluator`, `epoch_size`, `mutation_rate_scale_per_epoch`, `mutation_effect_scale_per_epoch`, `rng_seed`.
-pub struct PopulationConfig<F: FitnessEvaluation> {
-    project_name: String, 
-    project_directory: String,
-    evaluator: F, 
-    rng: Box<dyn RngCore>,
+pub struct PopulationConfig {
+    project_name: Arc<str>, 
+    project_directory: Arc<str>,
+    rng_seed: Option<u8>,
     epoch_size: usize,
     mutation_rate_scale_per_epoch: f32,
     mutation_effect_scale_per_epoch: f32,
@@ -44,34 +38,24 @@ pub enum FitnessValueError{
     NegativeFitnessError
 }
 
-impl<F: FitnessEvaluation> PopulationConfig<F> {
-    pub fn new(project_name: String,
-               home_directory: Option<String>,
-               evaluator: F, 
+impl PopulationConfig {
+    pub fn new(project_name: Arc<str>,
+               home_directory: Option<Arc<str>>,
                epoch_size: usize, 
                mutation_rate_scale_per_epoch: f32, 
                mutation_effect_scale_per_epoch: f32,
                visualize_best_agent: bool,
                rng_seed: Option<u8>) -> Self {
 
-        let mut rng: Box<dyn RngCore> = match rng_seed {
-            Some(seedu8) => {
-                let seed = [seedu8; 32];
-                Box::new(StdRng::from_seed(seed))
-            }
-            None => Box::new(rand::thread_rng())
-        };
-
-        let project_directory: String = match home_directory {
+        let project_directory: Arc<str> = match home_directory {
             Some(dir) => dir,
-            None => String::from(""),
+            None => "".into(),
         };
 
         PopulationConfig {
             project_name,
             project_directory,
-            evaluator,
-            rng,
+            rng_seed,
             epoch_size,
             mutation_rate_scale_per_epoch,
             mutation_effect_scale_per_epoch,
@@ -94,7 +78,7 @@ impl<F: FitnessEvaluation> PopulationConfig<F> {
 ///- **Parameters**: 
 ///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
 pub struct Population {
-    pub agents: Vec<NeuralNetwork>,
+    pub agents: Vec<Agent>,
     pub size: usize,
     pub topology_mutation_rate: f32,
     pub mutation_rate: f32,
@@ -102,20 +86,19 @@ pub struct Population {
     pub generation: usize,
     pub population_fitness: f32,
     survival_rate: f32,
-    agent_fitness: Vec<f32>,
 }
 
 impl Population {
 
     pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
-        let mut agent_vector: Vec<NeuralNetwork> = Vec::new();
+        let mut agent_vector:Vec<Agent> = Vec::new();
 
         for _idx in 0..population_size {
-            let mut agent = NeuralNetwork::new(genome_base.clone());
-            agent.initialize();
-            // Random initialization of the population of all parameters
+            let mut agent = Agent::new(genome_base.clone());
+
+            //Random mutation of newly initialized population members
             agent.mutate(1., 10., 0.);
-            agent_vector.push(agent.transfer());
+            agent_vector.push(agent);
         }
 
         Population {
@@ -127,17 +110,7 @@ impl Population {
             generation: 0,
             population_fitness: 0.,
             survival_rate,
-            agent_fitness: Vec::new(),
         }
-    }
-
-    ///### `evaluate_fitness`
-    ///- **Purpose**: Evaluates and updates the fitness of each agent in the population.
-    ///- **Parameters**:
-    ///  - `f`: A reference to an object implementing `FitnessEvaluation`.
-    fn evaluate_fitness<T: FitnessEvaluation>(&mut self, f: &T) {
-        let fitness_vector: Vec<f32> = self.agents.iter_mut().map(|x| f.fitness(x)).collect::<Result<Vec<f32>, FitnessValueError>>().unwrap();
-        self.agent_fitness = fitness_vector;
     }
 
     ///### `selection`
@@ -145,17 +118,17 @@ impl Population {
     ///- **Parameters**:
     ///  - `rng`: A mutable reference to a random number generator.
     ///  - `n_select`: Number of agents to select.
-    fn selection<R: Rng>(&self, rng: &mut R, n_select: usize) -> Vec<usize> {
+    fn selection(&self, rng_seed: Option<u8>, n_select: usize) -> Vec<usize> {
         let truncated_population = self.truncate_population();
-        self.stochastic_universal_sampling(rng, truncated_population, n_select)
+        self.stochastic_universal_sampling(rng_seed, truncated_population, n_select)
     }
 
     ///### `stochastic_universal_sampling`
     ///- **Purpose**: Implements SUS for efficient selection in evolutionary algorithms.
     ///- **Parameters**:
     ///  - `rng`, `sample`, `n_select`.
-    fn stochastic_universal_sampling<R: Rng>(&self, rng: &mut R, sample: Vec<usize>, n_select: usize) -> Vec<usize> {
-        let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agent_fitness[idx]).collect();
+    fn stochastic_universal_sampling(&self, rng_seed: Option<u8>, sample: Vec<usize>, n_select: usize) -> Vec<usize> {
+        let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agents[idx].fitness).collect();
         let total_population_fitness: f32 = sample_fitness.iter().sum();
         let point_spacing = total_population_fitness / (n_select as f32);
         let u = Uniform::from(0_f32..point_spacing);
@@ -163,7 +136,9 @@ impl Population {
         let mut selection: Vec<usize>  = Vec::new();
 
         //start the roulette pointer at a point between 0 and the first spacing
-        let mut roulette_pointer = u.sample(rng); 
+        
+        let mut rng = rng_box(rng_seed);
+        let mut roulette_pointer = u.sample(&mut rng); 
 
         for _p in 0..n_select {
             let mut idx: usize = 0;
@@ -186,7 +161,8 @@ impl Population {
     ///- **Returns**: A vector of indices representing the surviving population.
     fn truncate_population(&self) -> Vec<usize> {
         let n_survival = (self.agents.len() as f32) * self.survival_rate;
-        let mut fitness_pairing: Vec<_> = (0..self.agents.len()).zip(&self.agent_fitness).collect();
+        let agent_fitness: Vec<f32> = self.agents.iter().map( |a| a.fitness).collect();
+        let mut fitness_pairing: Vec<_> = (0..self.agents.len()).zip(agent_fitness).collect();
         fitness_pairing.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         let sorted_data: Vec<usize> = fitness_pairing.into_iter().map(|(a, _)| a).collect();
 
@@ -199,8 +175,8 @@ impl Population {
     ///- **Parameters**:
     ///  - `rng`: A mutable reference to a random number generator.
     ///  - `parental_ids`: Vector of indices representing selected parents.
-    fn generate_offspring<R: Rng>(&self, rng: &mut R, parental_ids: Vec<usize>) -> Vec<NeuralNetwork> {
-        let mut offspring: Vec<NeuralNetwork> = Vec::new();
+    fn generate_offspring(&self, rng_seed: Option<u8>, parental_ids: Vec<usize>) -> Vec<Agent> {
+        let mut offspring: Vec<Agent> = Vec::new();
 
         // Given selected parents, mate in pairs until the population size is fulfilled
         let num_parents = parental_ids.len();
@@ -208,6 +184,8 @@ impl Population {
         let mate_attempt_limit = self.size as f32 * 1.5;
 
         let mut n_mate_attempts = 0;
+
+        let mut rng = rng_box(rng_seed);
 
         while offspring.len() < self.size {
             let a1 = rng.gen_range(0..num_parents);
@@ -217,10 +195,13 @@ impl Population {
             let parent_1 = parental_ids[a1];
             let parent_2 = *partner_list[a2];
 
-            let offspring_nn = self.agents[parent_1].recombine_enecode(rng, &self.agents[parent_2] );
+            let offspring_ec = self.agents[parent_1].nn.recombine_enecode(&mut rng, &self.agents[parent_2].nn );
 
-            match offspring_nn {
-                Ok(nn) => offspring.push(nn),
+            match offspring_ec {
+                Ok(ec) => {
+                    let agent = Agent::new(ec);
+                    offspring.push(agent);
+                }
                 Err(e) => debug!("Recombination failed: {:#?}", e),
             }
 
@@ -240,55 +221,50 @@ impl Population {
     ///  - `pop_config`: Population configuration.
     ///  - `iterations_max`: Maximum number of iterations.
     ///  - `max_fitness_criterion`: Fitness threshold to halt evolution.
-    pub fn evolve<F: FitnessEvaluation>(&mut self, pop_config: PopulationConfig<F>, iterations_max: usize, max_fitness_criterion: f32) {
-        let mut rng = pop_config.rng;
+    pub fn evolve_step(&mut self, pop_config: &PopulationConfig) {
 
-        //reset generation value
-        self.generation = 0;
+        // Select same population size, but use SUS to select according to fitness
+        let selection = self.selection(pop_config.rng_seed, self.size);
 
-        while self.generation < iterations_max {
-            self.evaluate_fitness(&pop_config.evaluator);
+        let mut offspring = self.generate_offspring(pop_config.rng_seed, selection);
 
-            // Select same population size, but use SUS to select according to fitness
-            let selection = self.selection(&mut rng, self.size);
-
-            let mut offspring = self.generate_offspring(&mut rng, selection);
-
-            for agent in offspring.iter_mut() {
-                agent.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
-            }
-
-            self.agents = offspring;
-            self.population_fitness = self.agent_fitness.iter().sum::<f32>() / self.size as f32;
-            self.generation += 1;
-
-            let (best_agent_idx, population_max) = self.agent_fitness
-                                                       .clone()
-                                                       .into_iter()
-                                                       .enumerate()
-                                                       .fold((0, std::f32::MIN), |(idx_max, val_max), (idx, val) | {
-                                                            if val > val_max { (idx, val) } else { (idx_max, val_max) }
-                                                       });
-
-            if self.population_fitness > max_fitness_criterion {
-                break;
-            }
-
-            if self.generation % pop_config.epoch_size == 0 {
-                self.mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
-                self.topology_mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
-                self.mutation_effect_sd *= pop_config.mutation_effect_scale_per_epoch;
-            }
-
-            if (self.generation % 10 == 0) & pop_config.visualize_best_agent {
-                let agent_path = format!("{}{}_{:04}.dot", pop_config.project_directory, pop_config.project_name, self.generation);
-                self.agents[best_agent_idx].write_dot(&agent_path);
-            }
-
-            info!("Observing population fitness {} on generation {} with max of {}", self.population_fitness, self.generation, population_max);
-
+        for agent in offspring.iter_mut() {
+            agent.mutate(self.mutation_rate, self.mutation_effect_sd, self.topology_mutation_rate);
         }
 
+        self.agents = offspring;
+
+        self.generation += 1;
+
+        if self.generation % pop_config.epoch_size == 0 {
+            self.mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
+            self.topology_mutation_rate *= pop_config.mutation_rate_scale_per_epoch;
+            self.mutation_effect_sd *= pop_config.mutation_effect_scale_per_epoch;
+        }
+
+    }
+
+    pub fn update_population_fitness(&mut self) {
+        let agent_fitness_vector: Vec<f32> = self.agents.iter().map(|a| a.fitness).collect();
+        self.population_fitness = agent_fitness_vector.iter().sum::<f32>() / self.size as f32;
+    }
+
+    pub fn report(&self, pop_config: &PopulationConfig) {
+        let agent_fitness_vector: Vec<f32> = self.agents.iter().map(|a| a.fitness).collect();
+        let (best_agent_idx, population_max) = agent_fitness_vector
+                                                   .clone()
+                                                   .into_iter()
+                                                   .enumerate()
+                                                   .fold((0, std::f32::MIN), |(idx_max, val_max), (idx, val) | {
+                                                        if val > val_max { (idx, val) } else { (idx_max, val_max) }
+                                                   });
+
+        if (self.generation % 10 == 0) & pop_config.visualize_best_agent {
+            let agent_path = format!("{}{}_{:04}.dot", pop_config.project_directory, pop_config.project_name, self.generation);
+            self.agents[best_agent_idx].nn.write_dot(&agent_path);
+        }
+
+        info!("Observing population fitness {} on generation {} with max of {}", self.population_fitness, self.generation, population_max);
     }
 
 }
@@ -299,6 +275,7 @@ impl Population {
 mod tests {
     use super::*;
     use crate::graph::NeuralNetwork;
+    use crate::agent_wrapper::Agent;
     use crate::population::FitnessValueError;
 
     use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
@@ -315,21 +292,16 @@ mod tests {
             }
         }
 
-    }
-
-    impl FitnessEvaluation for XorEvaluation {
-        fn fitness(&self, agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
+        pub fn evaluate_agent(&self, agent: &mut Agent) -> Result<(), FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
-            let complexity = agent.node_identity_map.len() as f32;
+            let complexity = agent.nn.node_identity_map.len() as f32;
             let complexity_penalty = 0.01 * complexity;
-
-            let mut agent_mut = agent.clone();
 
             for bit1 in 0..2 {
                 for bit2 in 0..2 {
-                    agent_mut.fwd(vec![bit1 as f32, bit2 as f32]);
-                    let network_output = agent_mut.fetch_network_output();
+                    agent.fwd(vec![bit1 as f32, bit2 as f32]);
+                    let network_output = agent.nn.fetch_network_output();
 
                     let xor_true = (bit1 > 0) ^ (bit2 > 0);
                     let xor_true_float: f32 = if xor_true {1.} else {0.};
@@ -347,7 +319,9 @@ mod tests {
                 Err(FitnessValueError::NegativeFitnessError)
             } 
             else {
-                Ok(fitness_value) 
+                debug!("Updating agent with fitness value {}", fitness_value);
+                agent.update_fitness(fitness_value);
+                Ok(())
             }
 
         }
@@ -361,30 +335,14 @@ mod tests {
     }
 
     #[test]
-    fn test_evaluate_fitness() {
-
-        struct TestFitnessObject {
-        }
-
-        impl FitnessEvaluation for TestFitnessObject {
-            fn fitness(&self, _agent: &NeuralNetwork) -> Result<f32, FitnessValueError> {
-                Ok(1.)
-            }
-        }
-
-        let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 125, 0.8, 0.1, 0.);
-
-        population_test.evaluate_fitness(&TestFitnessObject {} );
-
-        assert_eq!(population_test.agent_fitness.iter().sum::<f32>(), 125.);
-    }
-
-    #[test]
     fn test_truncate_population() {
         let genome = GENOME_EXAMPLE.clone();
         let mut population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
-        population_test.agent_fitness = vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
+
+        let agent_fitness_vector = vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
+        for (agent, fitness) in population_test.agents.iter_mut().zip(agent_fitness_vector.iter()) {
+            agent.fitness = *fitness;
+        }
         
         let sorted_fitness_indices = population_test.truncate_population();
 
@@ -393,29 +351,29 @@ mod tests {
 
     #[test]
     fn test_stochastic_universal_sampling() {
-        let seed = [17; 32]; // Fixed seed for determinism
-        let mut rng = StdRng::from_seed(seed);
+        let seed = Some(17); // Fixed seed for determinism
 
         let genome = GENOME_EXAMPLE.clone();
         let mut population_test = Population::new(genome, 3, 0.8, 0.1, 0.);
-        population_test.agent_fitness = vec![5., 3., 2.];
+        let agent_fitness_vector  = vec![5., 3., 2.];
+        for (agent, fitness) in population_test.agents.iter_mut().zip(agent_fitness_vector.iter()) {
+            agent.fitness = *fitness;
+        }
         let sample: Vec<usize> = vec![0, 1, 2];
 
-        let sus: Vec<usize> = population_test.stochastic_universal_sampling(&mut rng, sample, 10);
+        let sus: Vec<usize> = population_test.stochastic_universal_sampling(seed, sample, 10);
         assert_eq!(vec![0, 0, 0, 0, 0, 1, 1, 1, 2, 2], sus);
     }
 
 
     #[test]
     fn test_generate_offspring() {
-        let seed = [17; 32]; // Fixed seed for determinism
-        let mut rng = StdRng::from_seed(seed);
 
         let genome = GENOME_EXAMPLE.clone();
         let population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
         let parent_id_vector = vec![0, 1, 3, 5];
 
-        let offspring_vec = population_test.generate_offspring(&mut rng, parent_id_vector);
+        let offspring_vec = population_test.generate_offspring(Some(17), parent_id_vector);
 
         assert_eq!(offspring_vec.len(), 10);
     }
@@ -429,9 +387,20 @@ mod tests {
 
         let ef = XorEvaluation::new();
         
-        let config = PopulationConfig::new("XOR_Predefined_Test".to_string(), None, ef, 50, 0.50, 0.50, false, Some(13));
 
-        population.evolve(config, 400, 5.8);
+        let project_name: &str = "XOR_Predefined_Test";
+        let config = PopulationConfig::new(Arc::from(project_name), None, 50, 0.50, 0.50, false, Some(13));
+
+        while (population.generation < 400) & (population.population_fitness < 5.8) {
+            for agent in population.agents.iter_mut() {
+                ef.evaluate_agent(agent);
+            }
+
+            population.update_population_fitness();
+            population.report(&config);
+            population.evolve_step(&config);
+        }
+
         assert!(population.population_fitness >= 5.2);
     }
 
@@ -444,12 +413,22 @@ mod tests {
 
         let ef = XorEvaluation::new();
 
-        let project_name = "XOR_Test".to_string();
-        let project_directory = "agents/XORtest/".to_string();
-        
-        let config = PopulationConfig::new(project_name, Some(project_directory), ef, 200, 0.50, 0.50, false, Some(17));
+        let project_name: &str  = "XOR_Test";
+        let project_directory: &str = "agents/XORtest/";
 
-        population.evolve(config, 1000, 5.8);
+        let config = PopulationConfig::new(Arc::from(project_name), Some(Arc::from(project_directory)), 200, 0.50, 0.50, false, Some(237));
+        while (population.generation < 1000) & (population.population_fitness < 5.8) {
+
+            for agent in population.agents.iter_mut() {
+                ef.evaluate_agent(agent);
+            }
+
+            population.update_population_fitness();
+            population.report(&config);
+            population.evolve_step(&config);
+            
+        }
+
         assert!(population.population_fitness >= 5.2);
     }
 
