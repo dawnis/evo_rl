@@ -22,7 +22,7 @@ def evaluate_xor_fitness(population_api, agent_idx):
     complexity_penalty = 0.1 * complexity
 
     for bit1 in [0, 1]:
-        for bit2 in [0, 2]:
+        for bit2 in [0, 1]:
             population_api.agent_fwd(agent_idx, [bit1, bit2])
             network_output = population_api.agent_out(agent_idx)
             xor_true = (bit1 > 0) ^ (bit2 > 0)
