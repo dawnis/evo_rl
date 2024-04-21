@@ -96,9 +96,7 @@ pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String
 
     //If it is the first daughter, add -1 to the end of the string
     if daughter_ids_progenitor.len() == 0 {
-        let mut daughter_id = neuron_id.clone();
-        daughter_id.push_str("-1");
-        daughter_id
+        format!("{}-0001", progenitor_code)
     } else {
         //else increment the largest daughter
         let largest_daughter_id = daughter_ids_progenitor.iter().max().unwrap();
@@ -112,8 +110,10 @@ pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String
             };
 
             let mut daughter_id = String::from(previous_lineage);
-            daughter_id.push('-');
-            daughter_id.push_str(&(ldn + 1).to_string());
+            //daughter_id.push('-');
+
+            let daughter_innovation = format!("-{:0>4}", ldn + 1);
+            daughter_id.push_str(&daughter_innovation);
 
             daughter_id.to_string()
 
@@ -147,23 +147,23 @@ mod tests {
         let daughters = Vec::new();
 
         let d1 = increment_innovation_number(&innovation_number, daughters);
-        assert_eq!(d1, String::from("a0-1"));
+        assert_eq!(d1, String::from("a0-0001"));
 
 
-        let a01 = String::from("a0-1");
-        let a02 = String::from("a0-2");
+        let a01 = String::from("a0-0001");
+        let a02 = String::from("a0-0002");
         let daughters2 = vec![&a01, &a02];
         let d2 = increment_innovation_number(&innovation_number, daughters2);
-        assert_eq!(d2, String::from("a0-3"));
+        assert_eq!(d2, String::from("a0-0003"));
 
-        let innovation_number2 = String::from("a0-2-2");
-        let a03 = String::from("a0-2-2-1");
-        let a04 = String::from("a0-2-2-20");
+        let innovation_number2 = String::from("a0-0001");
+        let a03 = String::from("a0-0002");
+        let a04 = String::from("a0-0005");
         let b01 = String::from("B0-10000");
 
         let daughters3 = vec![&a03, &a04, &b01];
         let d3 = increment_innovation_number(&innovation_number2, daughters3);
 
-        assert_eq!(d3, String::from("a0-2-2-21"));
+        assert_eq!(d3, String::from("a0-0006"));
     }
 }
