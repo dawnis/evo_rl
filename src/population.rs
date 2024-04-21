@@ -261,8 +261,9 @@ impl Population {
                                                    });
 
         if (self.generation % 10 == 0) & pop_config.visualize_best_agent {
-            let project_name = pop_config.project_name.to_string();
-            let agent_path = format!("{:?}_{:04}.dot", pop_config.project_directory.join(project_name), self.generation);
+            let dot_file = format!("{}_{:04}.dot", pop_config.project_name.to_string(), self.generation);
+            let agent_path = pop_config.project_directory.join(dot_file);
+            info!("Writing agent dot with path {:?}", agent_path);
             self.agents[best_agent_idx].nn.write_dot(&agent_path);
         }
 

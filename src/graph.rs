@@ -9,6 +9,7 @@ use rand::prelude::*;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::fs::File;
+use std::path::Path;
 use std::io::Write;
 use std::sync::Arc;
 use petgraph::graph::{DiGraph, NodeIndex, EdgeReference};
@@ -401,7 +402,7 @@ impl NeuralNetwork {
     }
 
     /// Write the graph as a .dot file for visualization/inspection
-    pub fn write_dot(&self, file_path: &str) {
+    pub fn write_dot(&self, file_path: &Path) {
         let node_label = |g: &DiGraph<Nn, f32>, node_ref: (NodeIndex, &Nn)| {
             format!("label=\"{}\"", node_ref.1.id)
         };
