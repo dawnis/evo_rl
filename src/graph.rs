@@ -198,13 +198,16 @@ impl NeuralNetwork {
         }
 
         let hidden_units = self.fetch_neuron_list_by_type(NeuronType::Hidden);
+        let num_units = hidden_units.len();
+
         for nn in hidden_units {
             if rng.gen::<f32>() < epsilon.powf(2.0) {
                 self.duplicate_neuron(nn);
                 break;
             }
 
-            if rng.gen::<f32>() < epsilon.powf(2.0) {
+            //Don't remove all the progenitors!
+            if (rng.gen::<f32>() < epsilon.powf(2.0)) && (num_units > 1) {
                 self.remove_neuron(nn);
                 break;
             }
@@ -509,7 +512,7 @@ mod tests {
 
         network_example.mutate_topology(&mut rng, epsilon);
 
-        let added_node = network_example.node_identity_map["N1-1"];
+        let added_node = network_example.node_identity_map["N1-0001"];
 
         let parent_nodes = network_example.graph.neighbors_directed(added_node, petgraph::Direction::Incoming);
 
@@ -588,7 +591,7 @@ mod tests {
 
         network1.duplicate_neuron(network1.node_identity_map["N1"]);
 
-        let added_node = network1.node_identity_map["N1-1"];
+        let added_node = network1.node_identity_map["N1-0001"];
 
         let parent_nodes = network1.graph.neighbors_directed(added_node, petgraph::Direction::Incoming);
 
