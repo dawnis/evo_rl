@@ -6,6 +6,7 @@ use rand::prelude::*;
 use log::*;
 use thiserror::Error;
 use std::sync::Arc;
+use std::path::PathBuf;
 use crate::rng_box;
 
 use crate::agent_wrapper::*;
@@ -24,7 +25,7 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 ///  - `evaluator`, `epoch_size`, `mutation_rate_scale_per_epoch`, `mutation_effect_scale_per_epoch`, `rng_seed`.
 pub struct PopulationConfig {
     project_name: Arc<str>, 
-    project_directory: Arc<str>,
+    project_directory: Arc<PathBuf>,
     rng_seed: Option<u8>,
     epoch_size: usize,
     mutation_rate_scale_per_epoch: f32,
@@ -40,16 +41,16 @@ pub enum FitnessValueError{
 
 impl PopulationConfig {
     pub fn new(project_name: Arc<str>,
-               home_directory: Option<Arc<str>>,
+               home_directory: Option<Arc<PathBuf>>,
                epoch_size: usize, 
                mutation_rate_scale_per_epoch: f32, 
                mutation_effect_scale_per_epoch: f32,
                visualize_best_agent: bool,
                rng_seed: Option<u8>) -> Self {
 
-        let project_directory: Arc<str> = match home_directory {
+        let project_directory: Arc<PathBuf> = match home_directory {
             Some(dir) => dir,
-            None => "".into(),
+            None => PathBuf::from(".").into(),
         };
 
         PopulationConfig {
@@ -260,11 +261,12 @@ impl Population {
                                                    });
 
         if (self.generation % 10 == 0) & pop_config.visualize_best_agent {
-            let agent_path = format!("{}{}_{:04}.dot", pop_config.project_directory, pop_config.project_name, self.generation);
+            let project_name = pop_config.project_name.to_string();
+            let agent_path = format!("{:?}_{:04}.dot", pop_config.project_directory.join(project_name), self.generation);
             self.agents[best_agent_idx].nn.write_dot(&agent_path);
         }
 
-        info!("Observing population fitness {} on generation {} with max of {}", self.population_fitness, self.generation, population_max);
+        info!("Observing N={} population with fitness {} on generation {} with max of {} (agent {})", self.agents.len(), self.population_fitness, self.generation, population_max, best_agent_idx);
     }
 
 }
@@ -414,7 +416,7 @@ mod tests {
         let ef = XorEvaluation::new();
 
         let project_name: &str  = "XOR_Test";
-        let project_directory: &str = "agents/XORtest/";
+        let project_directory: PathBuf = PathBuf::from("agents/XORtest");
 
         let config = PopulationConfig::new(Arc::from(project_name), Some(Arc::from(project_directory)), 200, 0.50, 0.50, false, Some(237));
         while (population.generation < 1000) & (population.population_fitness < 5.8) {

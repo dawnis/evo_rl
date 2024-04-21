@@ -11,6 +11,7 @@ use crate::graph::NeuralNetwork;
 use crate::agent_wrapper::*;
 use crate::population::{Population, PopulationConfig, FitnessValueError};
 use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
+use std::path::PathBuf;
 
 
 #[pyfunction]
@@ -75,8 +76,25 @@ impl PopulationApi {
 
         })?;
 
-        let test_name: &str = "test_name";
-        let evolve_config = PopulationConfig::new(Arc::from(test_name), None, 200, 0.50, 0.50, false, Some(17));
+        let evolve_config = Python::with_gil(|py| -> PyResult<PopulationConfig> {
+
+            let config: &PyDict = pyconfig.as_ref(py);
+
+            let project_name: String = match config.get_item("project_name")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing project name")
+            };
+
+            let project_directory: String = match config.get_item("project_directory")? {
+                Some(x) => x.extract()?,
+                None => panic!("missing project directory")
+            };
+
+            let project_path: Arc<PathBuf> = Arc::from(PathBuf::from(project_directory));
+
+            Ok(PopulationConfig::new(Arc::from(project_name), Some(project_path), 200, 0.50, 0.50, true, None))
+
+        })?;
 
 
         Ok(PopulationApi {
