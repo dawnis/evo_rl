@@ -12,3 +12,15 @@ Cargo.lock
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+
+#formatting 
+*.rustfmt
+
+#output files
+*.dot
+*.png
+
+#mac stuff
+.DS_Store
+.python-version
+
