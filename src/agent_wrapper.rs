@@ -1,3 +1,5 @@
+//! A wrapper class for neural network that creates an interface to other environments such as
+//! Python
 use crate::graph::NeuralNetwork;
 use crate::enecode::EneCode;
 use pyo3::prelude::*;

@@ -14,15 +14,6 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 
 /// `PopulationConfig` is a struct that configures `Population` for evolutionary selection.
 ///- **Purpose**: Configuration struct for setting hyperparameters of a population.
-///- **Fields**:
-///  - `evaluator`: A fitness evaluator of type `F` that implements `FitnessEvaluation`.
-///  - `rng`: A boxed random number generator.
-///  - `epoch_size`: Size of an epoch.
-///  - `mutation_rate_scale_per_epoch`: Scaling factor for mutation rate per epoch.
-///  - `mutation_effect_scale_per_epoch`: Scaling factor for the effect of mutation per epoch.
-///- **Method `new`**: Constructs a new `PopulationConfig`.
-///- **Parameters**: 
-///  - `evaluator`, `epoch_size`, `mutation_rate_scale_per_epoch`, `mutation_effect_scale_per_epoch`, `rng_seed`.
 pub struct PopulationConfig {
     project_name: Arc<str>, 
     project_directory: Arc<PathBuf>,
@@ -67,17 +58,6 @@ impl PopulationConfig {
 
 ///### `Population`
 ///- **Purpose**: Represents a population in the evolutionary algorithm.
-///- **Fields**:
-///  - `agents`: A vector of `NeuralNetwork`.
-///  - `size`: Size of the population.
-///  - `topology_mutation_rate`, `mutation_rate`, `mutation_effect_sd`: Parameters for mutation.
-///  - `generation`: Current generation number.
-///  - `population_fitness`: Average fitness of the population.
-///  - `survival_rate`: Rate at which agents survive per generation.
-///  - `agent_fitness`: Vector storing fitness of each agent.
-///- **Method `new`**: Constructs a new `Population`.
-///- **Parameters**: 
-///  - `genome_base`, `population_size`, `survival_rate`, `mutation_rate`, `topology_mutation_rate`.
 pub struct Population {
     pub agents: Vec<Agent>,
     pub size: usize,
@@ -117,7 +97,6 @@ impl Population {
     ///### `selection`
     ///- **Purpose**: Selects a subset of agents from the population for reproduction.
     ///- **Parameters**:
-    ///  - `rng`: A mutable reference to a random number generator.
     ///  - `n_select`: Number of agents to select.
     fn selection(&self, rng_seed: Option<u8>, n_select: usize) -> Vec<usize> {
         let truncated_population = self.truncate_population();
@@ -126,8 +105,6 @@ impl Population {
 
     ///### `stochastic_universal_sampling`
     ///- **Purpose**: Implements SUS for efficient selection in evolutionary algorithms.
-    ///- **Parameters**:
-    ///  - `rng`, `sample`, `n_select`.
     fn stochastic_universal_sampling(&self, rng_seed: Option<u8>, sample: Vec<usize>, n_select: usize) -> Vec<usize> {
         let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agents[idx].fitness).collect();
         let total_population_fitness: f32 = sample_fitness.iter().sum();
@@ -173,9 +150,6 @@ impl Population {
 
     ///### `generate_offspring`
     ///- **Purpose**: Generates offspring from selected parents.
-    ///- **Parameters**:
-    ///  - `rng`: A mutable reference to a random number generator.
-    ///  - `parental_ids`: Vector of indices representing selected parents.
     fn generate_offspring(&self, rng_seed: Option<u8>, parental_ids: Vec<usize>) -> Vec<Agent> {
         let mut offspring: Vec<Agent> = Vec::new();
 
@@ -216,12 +190,8 @@ impl Population {
         offspring
     }
 
-    ///### `evolve`
-    ///- **Purpose**: Evolves the population over a number of generations.
-    ///- **Parameters**:
-    ///  - `pop_config`: Population configuration.
-    ///  - `iterations_max`: Maximum number of iterations.
-    ///  - `max_fitness_criterion`: Fitness threshold to halt evolution.
+    ///### `evolve_step`
+    ///- **Purpose**: Runs a single round of evolution and increments one generation
     pub fn evolve_step(&mut self, pop_config: &PopulationConfig) {
 
         // Select same population size, but use SUS to select according to fitness
