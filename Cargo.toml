@@ -26,7 +26,9 @@ ndarray = { version = "0.15.6", features = ["serde"] }
 petgraph = "0.6.4"
 pretty_env_logger = "0.5.0"
 log = "0.4.20"
-pyo3-build-config = "0.21.2"
 
 [dev-dependencies]
 assert_matches = "1.5"
+
+[build-dependencies]
+pyo3-build-config = "0.21.2"
