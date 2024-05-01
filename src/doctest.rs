@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 
 
 lazy_static! {
-    pub static ref GENOME_EXAMPLE: EneCode =  EneCode::new(
+    pub static ref GENOME_EXAMPLE: EneCode =  EneCode::new_from_genome(
      vec![
          TopologyGene {
              innovation_number: "input_1".to_string(),
@@ -53,7 +53,7 @@ lazy_static! {
             active: true,
     };
 
-    pub static ref GENOME_EXAMPLE2: EneCode =  EneCode::new (
+    pub static ref GENOME_EXAMPLE2: EneCode =  EneCode::new_from_genome (
      vec![
          TopologyGene {
              innovation_number: "input_1".to_string(),
@@ -111,7 +111,7 @@ lazy_static! {
             tanh_alpha: 1.,
     };
 
-    pub static ref XOR_GENOME_MINIMAL: EneCode = EneCode::new (
+    pub static ref XOR_GENOME_MINIMAL: EneCode = EneCode::new_from_genome (
         vec![
             TopologyGene {
                 innovation_number: "i01".to_string(),
@@ -157,7 +157,7 @@ lazy_static! {
         }
     );
 
-    pub static ref XOR_GENOME: EneCode = EneCode::new (
+    pub static ref XOR_GENOME: EneCode = EneCode::new_from_genome (
         vec![
             TopologyGene {
                 innovation_number: "i01".to_string(),
