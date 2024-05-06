@@ -12,6 +12,7 @@ use thiserror::Error;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, IntoPyDict};
 
+use crate::hash_em;
 use crate::{graph::NeuralNetwork, sort_genes_by_neuron_type};
 
 /// `EneCode` encapsulates the genetic blueprint for constructing an entire neural network.
@@ -162,6 +163,76 @@ impl EneCode {
         Vec::new()
 
     }
+
+
+    ///Generates an appropriate Vec<TopologyGene> for a given number of inputs and outputs and
+    ///hidden neurons. Default is a fully connected FF layer. 
+    fn generate_new_topology(input_size: usize, output_size: usize, num_hidden: usize) -> Vec<TopologyGene> {
+
+        let mut topology: Vec<TopologyGene> = Vec::new();
+
+        for input_idx in 0..input_size-1 {
+            let neuron_id  =  format!("i{:02}", input_idx);
+
+            topology.push (
+                TopologyGene {
+                    innovation_number: Arc::from(neuron_id),
+                    pin: NeuronType::In,
+                    inputs: HashMap::new(),
+                    genetic_bias: 0.,
+                    active: true,
+                }
+            )
+        }
+
+        for hidden_idx in 0..num_hidden-1 {
+            let mut inputs: Vec<String> = (0..input_size-1).map(|x| format!("i{:02}", x)).collect();
+
+            let mut input_weight_map: HashMap<String, f32> = HashMap::new();
+
+            for input_id in inputs.drain(..) {
+                input_weight_map.insert(input_id, 0.);
+            }
+
+            let neuron_id = format!("h{:02}", hidden_idx); 
+
+            topology.push (
+                TopologyGene {
+                    innovation_number: Arc::from(neuron_id),
+                    pin: NeuronType::Hidden,
+                    inputs: input_weight_map,
+                    genetic_bias: 0.,
+                    active: true,
+                }
+            )
+        }
+
+        for output_idx in 0..output_size-1 {
+            let mut hidden: Vec<String> = (0..num_hidden-1).map(|x| format!("h{:02}", x)).collect();
+
+            let mut input_weight_map: HashMap<String, f32> = HashMap::new();
+
+            for input_id in hidden.drain(..) {
+                input_weight_map.insert(input_id, 0.);
+            }
+
+            let neuron_id =  format!("x{:02}", output_idx);
+            
+            topology.push (
+                TopologyGene {
+                    innovation_number: Arc::from(neuron_id),
+                    pin: NeuronType::Out,
+                    inputs: input_weight_map,
+                    genetic_bias: 0.,
+                    active: true,
+                }
+            )
+        }
+
+
+        topology
+    }
+
     ///Constructor function for EneCode based on established genome, puts things into correct order based on NeuronType and
     ///innovation number
     pub fn new_from_genome(topology: Vec<TopologyGene>, neuronal_props: NeuronalPropertiesGene, meta_learning: MetaLearningGene) -> Self {
