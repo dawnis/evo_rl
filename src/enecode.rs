@@ -171,8 +171,10 @@ impl EneCode {
 
         let mut topology: Vec<TopologyGene> = Vec::new();
 
-        for input_idx in 0..input_size-1 {
+        for input_idx in 0..input_size {
             let neuron_id  =  format!("i{:02}", input_idx);
+
+            debug!("adding neuron {}", neuron_id);
 
             topology.push (
                 TopologyGene {
@@ -185,8 +187,9 @@ impl EneCode {
             )
         }
 
-        for hidden_idx in 0..num_hidden-1 {
-            let mut inputs: Vec<String> = (0..input_size-1).map(|x| format!("i{:02}", x)).collect();
+        for hidden_idx in 0..num_hidden {
+            let mut inputs: Vec<String> = (0..input_size).map(|x| format!("i{:02}", x)).collect();
+
 
             let mut input_weight_map: HashMap<String, f32> = HashMap::new();
 
@@ -195,6 +198,7 @@ impl EneCode {
             }
 
             let neuron_id = format!("h{:02}", hidden_idx); 
+            debug!("adding neuron {}", neuron_id);
 
             topology.push (
                 TopologyGene {
@@ -207,8 +211,8 @@ impl EneCode {
             )
         }
 
-        for output_idx in 0..output_size-1 {
-            let mut hidden: Vec<String> = (0..num_hidden-1).map(|x| format!("h{:02}", x)).collect();
+        for output_idx in 0..output_size {
+            let mut hidden: Vec<String> = (0..num_hidden).map(|x| format!("h{:02}", x)).collect();
 
             let mut input_weight_map: HashMap<String, f32> = HashMap::new();
 
@@ -217,7 +221,8 @@ impl EneCode {
             }
 
             let neuron_id =  format!("x{:02}", output_idx);
-            
+            debug!("adding neuron {}", neuron_id);
+
             topology.push (
                 TopologyGene {
                     innovation_number: Arc::from(neuron_id),
@@ -543,6 +548,38 @@ mod tests {
     use assert_matches::assert_matches;
     use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2, XOR_GENOME_MINIMAL};
     use crate::setup_logger;
+
+    #[test] 
+    fn test_generate_new_topology() {
+        setup_logger();
+
+        let topology = EneCode::generate_new_topology(1, 1, 1);
+        assert_eq!(topology.len(), 3);
+
+        let h00: &TopologyGene = topology.iter().filter(|&t| &*t.innovation_number == "h00").next().unwrap(); 
+        let h00_input_keys: Vec<&str> = h00.inputs.iter().map(|(x, _)| x.as_str()).collect();
+        assert_eq!(vec!["i00"], h00_input_keys);
+
+        let x00: &TopologyGene = topology.iter().filter(|&t| &*t.innovation_number == "x00").next().unwrap(); 
+        let x00_input_keys: Vec<&str> = x00.inputs.iter().map(|(x, _)| x.as_str()).collect();
+        assert_eq!(vec!["h00"], x00_input_keys);
+
+        let topology2 = EneCode::generate_new_topology(2, 2, 2);
+        assert_eq!(topology2.len(), 6);
+
+        let h01: &TopologyGene = topology2.iter().filter(|&t| &*t.innovation_number == "h01").next().unwrap(); 
+        let mut h01_input_keys: Vec<&str> = h01.inputs.iter().map(|(x, _)| x.as_str()).collect();
+        h01_input_keys.sort();
+
+        assert_eq!(vec!["i00", "i01"], h01_input_keys);
+
+        let x01: &TopologyGene = topology2.iter().filter(|&t| &*t.innovation_number == "x01").next().unwrap(); 
+        let mut x01_input_keys: Vec<&str> = x01.inputs.iter().map(|(x, _)| x.as_str()).collect();
+        x01_input_keys.sort();
+
+        assert_eq!(vec!["h00", "h01"], x01_input_keys);
+
+    }
 
     #[test]
     fn test_new_from_enecode() {
