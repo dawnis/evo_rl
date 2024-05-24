@@ -7,10 +7,12 @@ use pyo3::ToPyObject;
 use rand::Rng;
 use rand::seq::IteratorRandom;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use thiserror::Error;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, IntoPyDict};
 
+use crate::hash_em;
 use crate::{graph::NeuralNetwork, sort_genes_by_neuron_type};
 
 /// `EneCode` encapsulates the genetic blueprint for constructing an entire neural network.
@@ -44,10 +46,10 @@ use crate::{graph::NeuralNetwork, sort_genes_by_neuron_type};
 /// # use std::collections::HashMap;
 ///
 /// // Initialization (example)
-/// let genome = EneCode::new (
+/// let genome = EneCode::new_from_genome (
 ///     vec![
 ///         TopologyGene {
-///             innovation_number: "N1".to_string(),
+///             innovation_number: Arc::from("N1"),
 ///             pin: NeuronType::In,
 ///             inputs: HashMap::new(),
 ///             genetic_bias: 0.1,
@@ -56,13 +58,13 @@ use crate::{graph::NeuralNetwork, sort_genes_by_neuron_type};
 ///         // ... more TopologyGene
 ///     ],
 ///     NeuronalPropertiesGene {
-///         innovation_number: "NP01".to_string(),
+///         innovation_number: Arc::from("NP01"),
 ///         tau: 0.9,
 ///         homeostatic_force: 0.1,
 ///         tanh_alpha: 2.0,
 ///     },
 ///     MetaLearningGene {
-///         innovation_number: "MTL01".to_string(),
+///         innovation_number: Arc::from("MTL01"),
 ///         learning_rate: 0.01,
 ///         learning_threshold: 0.5,
 ///     });
@@ -111,7 +113,7 @@ impl From<&NeuralNetwork> for EneCode {
                     None => panic!("Edge ID was not found"),
                 };
 
-                input_map.insert(parent_id, edge_weight);
+                input_map.insert(String::from(&*parent_id), edge_weight);
             }
 
             topology.push (
@@ -129,17 +131,112 @@ impl From<&NeuralNetwork> for EneCode {
         let neuronal_props = network.genome.neuronal_props.clone();
         let meta_learning = network.genome.meta_learning.clone();
 
-        EneCode::new(topology, neuronal_props, meta_learning) 
+        EneCode::new_from_genome(topology, neuronal_props, meta_learning) 
     }
 }
 
 impl EneCode {
-    ///Constructor function for EneCode, puts things into correct order based on NeuronType and
+    //TODO: Constructor for Vec<ToplogyGene> that has parameters for number of inputs/outputs
+    //TODO: Default constructors for all *gene structs
+    
+    ///Constructor function for basic genome with defined number of inputs/outputs
+    pub fn new(num_inputs: usize, num_outputs: usize) -> Self {
+
+        // Generate topology with a default rule for hidden progenitors. 
+        let topology_s: Vec<TopologyGene> = EneCode::generate_new_topology(num_inputs, num_inputs, num_outputs);
+        
+        // generate owned string of neuron id
+        let neuron_id: Vec<String> = topology_s.iter().map(|x| String::from(&*x.innovation_number)).collect();
+        
+        Self {
+            neuron_id,
+            topology: topology_s,
+            neuronal_props: NeuronalPropertiesGene::default(),
+            meta_learning: MetaLearningGene::default()
+        }
+
+    }
+
+
+    ///Generates an appropriate Vec<TopologyGene> for a given number of inputs and outputs and
+    ///hidden neurons. Default is a fully connected FF layer. 
+    pub fn generate_new_topology(input_size: usize, output_size: usize, num_hidden: usize) -> Vec<TopologyGene> {
+
+        let mut topology: Vec<TopologyGene> = Vec::new();
+
+        for input_idx in 0..input_size {
+            let neuron_id  =  format!("i{:02}", input_idx);
+
+            debug!("adding neuron {}", neuron_id);
+
+            topology.push (
+                TopologyGene {
+                    innovation_number: Arc::from(neuron_id),
+                    pin: NeuronType::In,
+                    inputs: HashMap::new(),
+                    genetic_bias: 0.,
+                    active: true,
+                }
+            )
+        }
+
+        for hidden_idx in 0..num_hidden {
+            let mut inputs: Vec<String> = (0..input_size).map(|x| format!("i{:02}", x)).collect();
+
+
+            let mut input_weight_map: HashMap<String, f32> = HashMap::new();
+
+            for input_id in inputs.drain(..) {
+                input_weight_map.insert(input_id, 0.);
+            }
+
+            let neuron_id = format!("h{:02}", hidden_idx); 
+            debug!("adding neuron {}", neuron_id);
+
+            topology.push (
+                TopologyGene {
+                    innovation_number: Arc::from(neuron_id),
+                    pin: NeuronType::Hidden,
+                    inputs: input_weight_map,
+                    genetic_bias: 0.,
+                    active: true,
+                }
+            )
+        }
+
+        for output_idx in 0..output_size {
+            let mut hidden: Vec<String> = (0..num_hidden).map(|x| format!("h{:02}", x)).collect();
+
+            let mut input_weight_map: HashMap<String, f32> = HashMap::new();
+
+            for input_id in hidden.drain(..) {
+                input_weight_map.insert(input_id, 0.);
+            }
+
+            let neuron_id =  format!("x{:02}", output_idx);
+            debug!("adding neuron {}", neuron_id);
+
+            topology.push (
+                TopologyGene {
+                    innovation_number: Arc::from(neuron_id),
+                    pin: NeuronType::Out,
+                    inputs: input_weight_map,
+                    genetic_bias: 0.,
+                    active: true,
+                }
+            )
+        }
+
+
+        topology
+    }
+
+    ///Constructor function for EneCode based on established genome, puts things into correct order based on NeuronType and
     ///innovation number
-    pub fn new(topology: Vec<TopologyGene>, neuronal_props: NeuronalPropertiesGene, meta_learning: MetaLearningGene) -> Self {
+    pub fn new_from_genome(topology: Vec<TopologyGene>, neuronal_props: NeuronalPropertiesGene, meta_learning: MetaLearningGene) -> Self {
 
         let topology_s: Vec<TopologyGene> = sort_genes_by_neuron_type(topology);
-        let neuron_id: Vec<String> = topology_s.iter().map(|tg| String::from(&tg.innovation_number)).collect();
+        let neuron_id: Vec<String> = topology_s.iter().map(|tg| tg.innovation_number.to_string()).collect();
 
         EneCode {
             neuron_id,
@@ -158,9 +255,9 @@ impl EneCode {
     ///
     /// # Returns
     /// A reference to the `TopologyGene` associated with the neuron ID.
-    pub fn topology_gene(&self, neuron_id: &String) -> &TopologyGene {
+    pub fn topology_gene(&self, neuron_id: &str) -> &TopologyGene {
         let gene = self.topology.iter()
-            .find(|&g| g.innovation_number == *neuron_id)
+            .find(|&g| &*g.innovation_number == neuron_id)
             .expect("Innovation Number Not Found in Topology Genome!");
 
         gene
@@ -177,14 +274,15 @@ impl EneCode {
     pub fn recombine<R: Rng>(&self, rng: &mut R, other_genome: &EneCode) -> Result<EneCode, RecombinationError> {
         // determine the number of crossover points by seeing how many genes have matching
         // innovation number
-        let self_innovation_nums: HashSet<_> = self.neuron_id.iter().collect();
-        let other_innovation_nums: HashSet<_> = other_genome.neuron_id.iter().collect();
-        let homology_genes: Vec<_> = self_innovation_nums.intersection(&other_innovation_nums).collect();
-        let crossover_topology_vec: Vec<TopologyGene> = self.topology.iter().filter(|x| homology_genes.contains(&&&x.innovation_number))
+        let self_innovation_nums: HashSet<&str> = self.neuron_id.iter().map(|x| &x[..]).collect();
+        let other_innovation_nums: HashSet<&str> = other_genome.neuron_id.iter().map(|x| &x[..]).collect();
+        let homology_genes: Vec<&str> = self_innovation_nums.intersection(&other_innovation_nums).map(|x| *x).collect();
+
+        let crossover_topology_vec: Vec<TopologyGene> = self.topology.iter().filter(|x| homology_genes.contains(&&*x.innovation_number))
                                                              .map(|tg| tg.clone()).collect();
 
         let sorted_crosover_topology: Vec<_> = sort_genes_by_neuron_type(crossover_topology_vec);
-        let sorted_homology_genes: Vec<&String> = sorted_crosover_topology.iter().map(|tg| &tg.innovation_number).collect();
+        let sorted_homology_genes: Vec<&str> = sorted_crosover_topology.iter().map(|tg| &*tg.innovation_number).collect();
 
         // determine number of crossover points or return a recombination error if none exists
         if sorted_homology_genes.len() == 0 {
@@ -222,7 +320,7 @@ impl EneCode {
 
             let mut self_genes: Vec<TopologyGene> = Vec::new();
             while let Some(sg) = own_copy.pop() {
-                if sg.innovation_number == *innovation_number {
+                if &*sg.innovation_number == innovation_number {
                     self_genes.push(sg);
                     break;
                 }
@@ -231,7 +329,7 @@ impl EneCode {
 
             let mut other_genes: Vec<TopologyGene> = Vec::new();
             while let Some(og) = others_copy.pop() {
-                if og.innovation_number == *innovation_number {
+                if &*og.innovation_number == innovation_number {
                     other_genes.push(og);
                     break;
                 }
@@ -260,7 +358,7 @@ impl EneCode {
             recombined_offspring_topology.extend(others_copy.drain(..));
         }
 
-        Ok(EneCode::new(recombined_offspring_topology, self.neuronal_props.clone(), self.meta_learning.clone()))
+        Ok(EneCode::new_from_genome(recombined_offspring_topology, self.neuronal_props.clone(), self.meta_learning.clone()))
     }
 
 
@@ -288,12 +386,12 @@ impl EneCode {
 ///
 /// // Assume `genome` is a properly initialized EneCode
 /// # let genome = GENOME_EXAMPLE.clone();
-/// let neuron_id = "N1".to_string();
-/// let neuronal_ene_code = NeuronalEneCode::new_from_enecode(neuron_id, &genome);
+/// let neuron_id = Arc::from("N1");
+/// let neuronal_ene_code = NeuronalEneCode::new_from_genome_from_enecode(neuron_id, &genome);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeuronalEneCode<'a> {
-    pub neuron_id: String,
+    pub neuron_id: Arc<str>,
     pub topology: &'a TopologyGene,
     pub properties: &'a NeuronalPropertiesGene,
     pub meta: &'a MetaLearningGene,
@@ -301,10 +399,10 @@ pub struct NeuronalEneCode<'a> {
 
 /// Generates a more specific genetic handle for use in initializing a neuron
 impl<'a> NeuronalEneCode<'a> {
-    pub fn new_from_enecode(neuron_id: String, genome: &'a EneCode) -> Self {
+    pub fn new_from_enecode(neuron_id: &str, genome: &'a EneCode) -> Self {
         let topology = genome.topology_gene(&neuron_id);
         NeuronalEneCode {
-            neuron_id,
+            neuron_id: neuron_id.into(),
             topology,
             properties: &genome.neuronal_props,
             meta: &genome.meta_learning, 
@@ -338,7 +436,7 @@ pub enum RecombinationError {
 /// * `active` - Whether the neuron is currently active.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TopologyGene {
-    pub innovation_number: String,
+    pub innovation_number: Arc<str>,
     pub pin: NeuronType, //stolen from python-neat for outside connections
     pub inputs: HashMap<String, f32>, //map that defines genetic weight of synapse for each parent
     pub genetic_bias: f32,
@@ -348,7 +446,7 @@ pub struct TopologyGene {
 impl ToPyObject for TopologyGene {
     fn to_object(&self, py: Python<'_>) -> PyObject {
         let dict = PyDict::new(py);
-        dict.set_item("innovation_number", &self.innovation_number);
+        dict.set_item("innovation_number", &self.innovation_number.to_string());
 
         match self.pin {
             NeuronType::In => dict.set_item("pin", "Input"),
@@ -373,16 +471,28 @@ impl ToPyObject for TopologyGene {
 /// * `tanh_alpha` - Scaling factor for tanh activation function.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeuronalPropertiesGene {
-    pub innovation_number: String,
+    pub innovation_number: Arc<str>,
     pub tau: f32,
     pub homeostatic_force: f32,
     pub tanh_alpha: f32,
 }
 
+impl Default for NeuronalPropertiesGene {
+    fn default() -> Self {
+        Self {
+            innovation_number: Arc::from("p01"),
+            tau: 0.,
+            homeostatic_force: 0., 
+            tanh_alpha: 1.
+        }
+
+    }
+}
+
 impl ToPyObject for NeuronalPropertiesGene {
     fn to_object(&self, py: Python<'_>) -> PyObject {
         let dict = PyDict::new(py);
-        dict.set_item("innovation_number", &self.innovation_number);
+        dict.set_item("innovation_number", &self.innovation_number.to_string());
         dict.set_item("tau", self.tau);
         dict.set_item("homeostatic_force", self.homeostatic_force);
         dict.set_item("tanh_alpha", self.tanh_alpha);
@@ -398,15 +508,25 @@ impl ToPyObject for NeuronalPropertiesGene {
 /// * `learning_threshold` - Learning threshold for synaptic adjustments.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MetaLearningGene {
-    pub innovation_number: String,
+    pub innovation_number: Arc<str>,
     pub learning_rate: f32,
     pub learning_threshold: f32
+}
+
+impl Default for MetaLearningGene {
+    fn default() -> Self {
+        Self {
+            innovation_number: Arc::from("m01"),
+            learning_rate: 0.001,
+            learning_threshold: 0.5,
+        }
+    }
 }
 
 impl ToPyObject for MetaLearningGene {
     fn to_object(&self, py: Python<'_>) -> PyObject {
         let dict = PyDict::new(py);
-        dict.set_item("innnovation_number", &self.innovation_number);
+        dict.set_item("innnovation_number", &self.innovation_number.to_string());
         dict.set_item("learning_rate", self.learning_rate);
         dict.set_item("learning_threshold", self.learning_threshold);
         dict.into()
@@ -422,19 +542,51 @@ mod tests {
     use crate::doctest::{XOR_GENOME, GENOME_EXAMPLE, GENOME_EXAMPLE2, XOR_GENOME_MINIMAL};
     use crate::setup_logger;
 
+    #[test] 
+    fn test_generate_new_topology() {
+        setup_logger();
+
+        let topology = EneCode::generate_new_topology(1, 1, 1);
+        assert_eq!(topology.len(), 3);
+
+        let h00: &TopologyGene = topology.iter().filter(|&t| &*t.innovation_number == "h00").next().unwrap(); 
+        let h00_input_keys: Vec<&str> = h00.inputs.iter().map(|(x, _)| x.as_str()).collect();
+        assert_eq!(vec!["i00"], h00_input_keys);
+
+        let x00: &TopologyGene = topology.iter().filter(|&t| &*t.innovation_number == "x00").next().unwrap(); 
+        let x00_input_keys: Vec<&str> = x00.inputs.iter().map(|(x, _)| x.as_str()).collect();
+        assert_eq!(vec!["h00"], x00_input_keys);
+
+        let topology2 = EneCode::generate_new_topology(2, 2, 2);
+        assert_eq!(topology2.len(), 6);
+
+        let h01: &TopologyGene = topology2.iter().filter(|&t| &*t.innovation_number == "h01").next().unwrap(); 
+        let mut h01_input_keys: Vec<&str> = h01.inputs.iter().map(|(x, _)| x.as_str()).collect();
+        h01_input_keys.sort();
+
+        assert_eq!(vec!["i00", "i01"], h01_input_keys);
+
+        let x01: &TopologyGene = topology2.iter().filter(|&t| &*t.innovation_number == "x01").next().unwrap(); 
+        let mut x01_input_keys: Vec<&str> = x01.inputs.iter().map(|(x, _)| x.as_str()).collect();
+        x01_input_keys.sort();
+
+        assert_eq!(vec!["h00", "h01"], x01_input_keys);
+
+    }
+
     #[test]
     fn test_new_from_enecode() {
         // Create an EneCode instance and use it to initialize a NeuronalEneCode
 
-        let neuronal_ene_code = NeuronalEneCode::new_from_enecode(String::from("N1"), &GENOME_EXAMPLE);
+        let neuronal_ene_code = NeuronalEneCode::new_from_enecode("N1", &GENOME_EXAMPLE);
 
         let mut input_map = HashMap::new();
         input_map.insert(String::from("input_1"), 1.0_f32);
 
         let expected_nec: NeuronalEneCode = NeuronalEneCode {
-         neuron_id: String::from("N1"),
+         neuron_id: Arc::from("N1"),
          topology: &TopologyGene {
-                 innovation_number: "N1".to_string(),
+                 innovation_number: Arc::from("N1"),
                  pin: NeuronType::Hidden,
                  inputs: input_map,
                  genetic_bias: 0.0,
@@ -461,7 +613,7 @@ mod tests {
     #[test]
     fn test_topology_gene() {
         let topology_gene_n1 = GENOME_EXAMPLE.topology_gene(&String::from("N1"));
-        assert_eq!(String::from("N1"), topology_gene_n1.innovation_number);
+        assert_eq!(String::from("N1"), topology_gene_n1.innovation_number.to_string());
     }
 
     #[test]
@@ -518,7 +670,7 @@ mod tests {
 
         let new_topology_genome: Vec<TopologyGene> = ene2_base.topology.iter().map( |tg| 
                 TopologyGene {
-                    innovation_number: String::from(&tg.innovation_number),
+                    innovation_number: tg.innovation_number.clone(),
                     pin: tg.pin.clone(),
                     inputs: tg.inputs.clone(),
                     genetic_bias: 5.,
@@ -526,7 +678,7 @@ mod tests {
                 }
             ).collect();
 
-        let ene2: EneCode = EneCode::new(new_topology_genome, ene2_base.neuronal_props, ene2_base.meta_learning);
+        let ene2: EneCode = EneCode::new_from_genome(new_topology_genome, ene2_base.neuronal_props, ene2_base.meta_learning);
 
         let recombined = ene1.recombine(&mut rng, &ene2).unwrap();
         let recombined_genetic_bias: Vec<_> = recombined.topology.iter().map(|tg| tg.genetic_bias).collect();

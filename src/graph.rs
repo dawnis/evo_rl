@@ -2,7 +2,7 @@
 //! Evolutionary changes are projected onto the graph first before being encoded genetically.
 
 use log::*;
-use crate::increment_innovation_number;
+use crate::{increment_innovation_number, progenitor_code};
 use crate::neuron::Nn;
 use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use rand::prelude::*;
@@ -96,7 +96,7 @@ impl NeuralNetwork {
 
         //Add all neuron nodes
         for neuron_id in &self.genome.neuron_id[..] {
-            let nge = NeuronalEneCode::new_from_enecode(neuron_id.clone(), &self.genome);
+            let nge = NeuronalEneCode::new_from_enecode(neuron_id.as_str(), &self.genome);
             let arc_nge = Arc::new(nge);
             let neuron = Nn::from(arc_nge.clone());
             let node = self.graph.add_node(neuron);
@@ -105,7 +105,7 @@ impl NeuralNetwork {
 
         //Build Edges
         for daughter in &self.genome.neuron_id[..] {
-            let nge = NeuronalEneCode::new_from_enecode(daughter.clone(), &self.genome);
+            let nge = NeuronalEneCode::new_from_enecode(daughter.as_str(), &self.genome);
 
             // It's possible to recombine genes in such a way that a topology gene refers to a
             //non-existent parent
@@ -206,9 +206,14 @@ impl NeuralNetwork {
                 break;
             }
 
-            //Don't remove all the progenitors!
-            if (rng.gen::<f32>() < epsilon.powf(2.0)) && (num_units > 1) {
-                self.remove_neuron(nn);
+            //Don't remove progenitors!
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                let progenitor_code = progenitor_code(&*self.graph[nn].id);
+
+                if &*self.graph[nn].id != progenitor_code {
+                    self.remove_neuron(nn);
+                }
+
                 break;
             }
 
@@ -282,7 +287,7 @@ impl NeuralNetwork {
     fn duplicate_neuron(&mut self, neuron: NodeIndex) {
         let node_children = self.graph.neighbors_directed(neuron, petgraph::Direction::Outgoing);
 
-        let mut node_children_id: Vec<&String> = Vec::new();
+        let mut node_children_id: Vec<&str> = Vec::new();
         for cnode in node_children {
             match self.graph[cnode].neuron_type {
                 NeuronType::Hidden => node_children_id.push(&self.graph[cnode].id),
@@ -292,22 +297,23 @@ impl NeuralNetwork {
 
         let mut neuron_daughter = self.graph[neuron].clone();
         let daughter_innovation_number = increment_innovation_number(&self.graph[neuron].id, node_children_id);
+        let daughter_id_key = daughter_innovation_number.clone();
 
         //initialize with zero weights and bias having a connection to parent
-        neuron_daughter.id = daughter_innovation_number.clone();
-        neuron_daughter.inputs = vec![self.graph[neuron].id.clone()];
+        neuron_daughter.id = daughter_innovation_number;
+        neuron_daughter.inputs = vec![self.graph[neuron].id.to_string()];
         neuron_daughter.bias = 0.;
         neuron_daughter.synaptic_weights = DVector::from_vec(vec![0.]);
 
         let daughter_node = self.graph.add_node(neuron_daughter);
-        self.node_identity_map.entry(daughter_innovation_number).or_insert(daughter_node);
+        self.node_identity_map.entry(daughter_id_key.to_string()).or_insert(daughter_node);
 
         self.graph.add_edge(neuron, daughter_node, 0.);
     }
 
     /// remove a neuron from the graph and update node identity map
     fn remove_neuron(&mut self, neuron: NodeIndex) {
-        let neuron_id = self.graph[neuron].id.clone();
+        let neuron_id = self.graph[neuron].id.to_string();
         self.graph.remove_node(neuron);
 
         let value = self.node_identity_map.remove(&neuron_id);
@@ -318,7 +324,7 @@ impl NeuralNetwork {
         }
 
         for node_index in self.graph.node_indices() {
-            let node_entry = self.graph[node_index].id.clone();
+            let node_entry = self.graph[node_index].id.to_string();
             self.node_identity_map.insert(node_entry, node_index);
         }
     }
@@ -330,9 +336,10 @@ impl NeuralNetwork {
 
     /// Helper function to identify neurons of a paritcular type and returns them sorted by id
     fn fetch_neuron_list_by_type(&self, neurontype: NeuronType) -> Vec<NodeIndex> {
+
         let mut neuron_ids: Vec<String> = self.graph.node_indices().into_iter()
             .filter(|&n| self.graph[n].neuron_type == neurontype)
-            .map(|n| self.graph[n].id.clone())
+            .map(|n| self.graph[n].id.to_string())
             .collect();
 
         neuron_ids.sort();
@@ -449,7 +456,7 @@ mod tests {
         let mut traversal_order: Vec<String> = Vec::new();
 
         while let Some(nx) = dfs.next(&network_example.graph) {
-            traversal_order.push(network_example.graph[nx].id.clone())
+            traversal_order.push(network_example.graph[nx].id.to_string())
         }
 
         assert_eq!(vec!["input_1", "N1", "output_1"], traversal_order);
@@ -518,7 +525,7 @@ mod tests {
 
         let mut parent_node_vec: Vec<String> = Vec::new();
         for pnode in parent_nodes {
-            parent_node_vec.push(String::from(network_example.graph[pnode].id.clone()));
+            parent_node_vec.push(String::from(network_example.graph[pnode].id.to_string()));
         }
 
         assert_eq!(parent_node_vec.len(), 1);
@@ -597,7 +604,7 @@ mod tests {
 
         let mut parent_node_vec: Vec<String> = Vec::new();
         for pnode in parent_nodes {
-            parent_node_vec.push(String::from(network1.graph[pnode].id.clone()));
+            parent_node_vec.push(network1.graph[pnode].id.to_string())
         }
 
         assert_eq!(parent_node_vec.len(), 1);
@@ -621,7 +628,7 @@ mod tests {
         let parent_nodes = network.graph.neighbors_directed(bnode, petgraph::Direction::Incoming);
         let mut parent_node_vec: Vec<String> = Vec::new();
         for pnode in parent_nodes {
-            parent_node_vec.push(String::from(network.graph[pnode].id.clone()));
+            parent_node_vec.push(network.graph[pnode].id.to_string())
         }
 
         let filt_list: Vec<&String> = parent_node_vec.iter().filter(|&x| x == "A").collect();
@@ -643,7 +650,7 @@ mod tests {
         let mut graph_nodes: Vec<String> = Vec::new();
 
         for node in network.graph.node_indices() {
-            graph_nodes.push(network.graph[node].id.clone());
+            graph_nodes.push(network.graph[node].id.to_string());
         }
 
         assert!(!graph_nodes.contains(&String::from("B")));

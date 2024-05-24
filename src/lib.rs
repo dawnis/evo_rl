@@ -17,6 +17,7 @@ use rand::prelude::*;
 use enecode::{TopologyGene, NeuronType};
 use log::*;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::f32::consts::E;
 
 ///Utility function for logging unit tests
@@ -77,26 +78,33 @@ pub fn sort_genes_by_neuron_type(input_topology_vector: Vec<TopologyGene>) -> Ve
     
 }
 
+/// Returns progenitor code base for an innnovation number
+pub fn progenitor_code(innovation_number: &str) -> &str {
+    match innovation_number.find("-") {
+        Some(idx) => {
+            let(prog, _tail) = innovation_number.split_at(idx);
+            prog
+        }
+        None => innovation_number
+    }
+
+}
+
 /// Increments the ID of a neuron when creating a daughter
-pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String>) -> String {
+pub fn increment_innovation_number(neuron_id: &str, daughter_ids: Vec<&str>) -> Arc<str> {
     //innovation numbers will be of the form alphanumeric string (progenitor code) followed by
     //numeric (lineage code)
     //First, identify the progenitor code
     
-    let progenitor_code: &str = match neuron_id.find("-") {
-        Some(idx) => {
-        let (pc, _tail) = neuron_id.split_at(idx);
-        pc
-        },
-        None => neuron_id
-    };
+    let progenitor_code: &str = progenitor_code(neuron_id);
 
-    let daughter_ids_progenitor: Vec<&&String> = daughter_ids.iter().filter(|&id| id.starts_with(progenitor_code))
-                                                                    .filter(|&id| id != &progenitor_code).collect();
+    let daughter_ids_progenitor: Vec<&str> = daughter_ids.iter().map(|x| *x)
+                                                                .filter(|id| id.starts_with(progenitor_code))
+                                                                .filter(|&id| id != progenitor_code).collect();
 
     //If it is the first daughter, add -1 to the end of the string
     if daughter_ids_progenitor.len() == 0 {
-        format!("{}-0001", progenitor_code)
+        format!("{}-0001", progenitor_code).into()
     } else {
         //else increment the largest daughter
         let largest_daughter_id = daughter_ids_progenitor.iter().max().unwrap();
@@ -115,7 +123,7 @@ pub fn increment_innovation_number(neuron_id: &String, daughter_ids: Vec<&String
             let daughter_innovation = format!("-{:0>4}", ldn + 1);
             daughter_id.push_str(&daughter_innovation);
 
-            daughter_id.to_string()
+            Arc::from(daughter_id)
 
         } else {
             debug!("Problem with parsing string largest_daughter_id {} while duplicating {}", largest_daughter_id, neuron_id);
@@ -142,28 +150,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_progenitor_code() {
+        assert_eq!("a0", progenitor_code("a0"));
+        assert_eq!("a0", progenitor_code("a0-12345"));
+        assert_eq!("b00", progenitor_code("b00-12345"));
+    }
+
+    #[test]
     fn test_increment_innovation_number() {
         let innovation_number = String::from("a0");
         let daughters = Vec::new();
 
         let d1 = increment_innovation_number(&innovation_number, daughters);
-        assert_eq!(d1, String::from("a0-0001"));
+        assert_eq!(&*d1, "a0-0001");
 
-
-        let a01 = String::from("a0-0001");
-        let a02 = String::from("a0-0002");
-        let daughters2 = vec![&a01, &a02];
+        let daughters2 = vec!["a0-0001", "a0-0002"];
         let d2 = increment_innovation_number(&innovation_number, daughters2);
-        assert_eq!(d2, String::from("a0-0003"));
+        assert_eq!(&*d2, "a0-0003");
 
         let innovation_number2 = String::from("a0-0001");
-        let a03 = String::from("a0-0002");
-        let a04 = String::from("a0-0005");
-        let b01 = String::from("B0-10000");
 
-        let daughters3 = vec![&a03, &a04, &b01];
+        let daughters3 = vec!["a0-0002", "a0-0005", "B0-10000"];
         let d3 = increment_innovation_number(&innovation_number2, daughters3);
 
-        assert_eq!(d3, String::from("a0-0006"));
+        assert_eq!(&*d3, "a0-0006");
     }
 }

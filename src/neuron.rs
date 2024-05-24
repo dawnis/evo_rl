@@ -29,7 +29,7 @@ use crate::{relu, sigmoid};
 /// // code example here
 #[derive(Debug, Clone)]
 pub struct Nn {
-    pub id: String,
+    pub id: Arc<str>,
     pub synaptic_weights: DVector<f32>,
     pub bias: f32,
     pub inputs: Vec<String>,
@@ -149,7 +149,7 @@ mod tests {
         // Create a NeuronalEneCode and use it to initialize an Nn with NeuronType::Hidden
         //
         let nec = NeuronalEneCode {
-            neuron_id: "h01".to_string(),
+            neuron_id: "h01".into(),
             topology: &TOPOLOGY_GENE_EXAMPLE,
             properties: &NEURONAL_PROPERTIES_GENE_EXAMPLE,
             meta: &META_GENE_EXAMPLE,
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn test_output_value() {
         let nec = NeuronalEneCode {
-            neuron_id: "h01".to_string(),
+            neuron_id: "h01".into(),
             topology: &TOPOLOGY_GENE_EXAMPLE,
             properties: &NEURONAL_PROPERTIES_GENE_EXAMPLE,
             meta: &META_GENE_EXAMPLE,
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     fn test_mutate() {
         let nec = NeuronalEneCode {
-            neuron_id: "h01".to_string(),
+            neuron_id: "h01".into(),
             topology: &TOPOLOGY_GENE_EXAMPLE,
             properties: &NEURONAL_PROPERTIES_GENE_EXAMPLE,
             meta: &META_GENE_EXAMPLE,
