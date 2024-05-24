@@ -78,19 +78,25 @@ pub fn sort_genes_by_neuron_type(input_topology_vector: Vec<TopologyGene>) -> Ve
     
 }
 
+/// Returns progenitor code base for an innnovation number
+pub fn progenitor_code(innovation_number: &str) -> &str {
+    match innovation_number.find("-") {
+        Some(idx) => {
+            let(prog, _tail) = innovation_number.split_at(idx);
+            prog
+        }
+        None => innovation_number
+    }
+
+}
+
 /// Increments the ID of a neuron when creating a daughter
 pub fn increment_innovation_number(neuron_id: &str, daughter_ids: Vec<&str>) -> Arc<str> {
     //innovation numbers will be of the form alphanumeric string (progenitor code) followed by
     //numeric (lineage code)
     //First, identify the progenitor code
     
-    let progenitor_code: &str = match neuron_id.find("-") {
-        Some(idx) => {
-        let (pc, _tail) = neuron_id.split_at(idx);
-        pc
-        },
-        None => neuron_id
-    };
+    let progenitor_code: &str = progenitor_code(neuron_id);
 
     let daughter_ids_progenitor: Vec<&str> = daughter_ids.iter().map(|x| *x)
                                                                 .filter(|id| id.starts_with(progenitor_code))
@@ -142,6 +148,13 @@ pub fn relu(z: &f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_progenitor_code() {
+        assert_eq!("a0", progenitor_code("a0"));
+        assert_eq!("a0", progenitor_code("a0-12345"));
+        assert_eq!("b00", progenitor_code("b00-12345"));
+    }
 
     #[test]
     fn test_increment_innovation_number() {
