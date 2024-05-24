@@ -2,7 +2,7 @@
 //! Evolutionary changes are projected onto the graph first before being encoded genetically.
 
 use log::*;
-use crate::increment_innovation_number;
+use crate::{increment_innovation_number, progenitor_code};
 use crate::neuron::Nn;
 use crate::enecode::{EneCode, NeuronalEneCode, NeuronType};
 use rand::prelude::*;
@@ -206,9 +206,14 @@ impl NeuralNetwork {
                 break;
             }
 
-            //Don't remove all the progenitors!
-            if (rng.gen::<f32>() < epsilon.powf(2.0)) && (num_units > 1) {
-                self.remove_neuron(nn);
+            //Don't remove progenitors!
+            if rng.gen::<f32>() < epsilon.powf(2.0) {
+                let progenitor_code = progenitor_code(&*self.graph[nn].id);
+
+                if &*self.graph[nn].id != progenitor_code {
+                    self.remove_neuron(nn);
+                }
+
                 break;
             }
 
