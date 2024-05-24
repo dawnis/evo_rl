@@ -143,13 +143,14 @@ impl EneCode {
     pub fn new(num_inputs: usize, num_outputs: usize) -> Self {
 
         // Generate topology with a default rule for hidden progenitors. 
-        //let topology_s: Vec<TopologyGene> = self.generate_new_topology(input_size, output_size, hidden_size);
+        let topology_s: Vec<TopologyGene> = EneCode::generate_new_topology(num_inputs, num_inputs, num_outputs);
         
-        // use default method for both props/meta genes
+        // generate owned string of neuron id
+        let neuron_id: Vec<String> = topology_s.iter().map(|x| String::from(&*x.innovation_number)).collect();
         
         Self {
-            neuron_id: vec![],
-            topology: vec![],
+            neuron_id,
+            topology: topology_s,
             neuronal_props: NeuronalPropertiesGene::default(),
             meta_learning: MetaLearningGene::default()
         }
@@ -157,17 +158,9 @@ impl EneCode {
     }
 
 
-    ///Constructs topology gene vector (fully connected hidden layer) with given input/output
-    ///sizes and number of hidden units
-    fn generate_new_topoloy(input_size: usize, output_size: usize, hidden_size: usize) -> Vec<TopologyGene> {
-        Vec::new()
-
-    }
-
-
     ///Generates an appropriate Vec<TopologyGene> for a given number of inputs and outputs and
     ///hidden neurons. Default is a fully connected FF layer. 
-    fn generate_new_topology(input_size: usize, output_size: usize, num_hidden: usize) -> Vec<TopologyGene> {
+    pub fn generate_new_topology(input_size: usize, output_size: usize, num_hidden: usize) -> Vec<TopologyGene> {
 
         let mut topology: Vec<TopologyGene> = Vec::new();
 

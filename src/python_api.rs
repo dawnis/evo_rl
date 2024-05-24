@@ -7,10 +7,10 @@ use pyo3::Py;
 use std::collections::HashMap;
 use std::cell::Cell;
 use std::sync::Arc;
+use crate::enecode::EneCode;
 use crate::graph::NeuralNetwork;
 use crate::agent_wrapper::*;
 use crate::population::{Population, PopulationConfig, FitnessValueError};
-use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
 use std::path::PathBuf;
 
 
@@ -44,12 +44,21 @@ struct PopulationApi {
 impl PopulationApi {
     #[new]
     pub fn new(pyconfig: Py<PyDict>) -> PyResult<Self> {
-        let genome = XOR_GENOME_MINIMAL.clone();
 
 
         let population = Python::with_gil(|py| -> PyResult<Population> {
 
             let config: &PyDict = pyconfig.as_ref(py);
+
+            let input_size: usize = match config.get_item("input_size")? {
+                Some(x) => x.extract()?,
+                None => panic!("Input size for network is not defined.")
+            };
+
+            let output_size: usize = match config.get_item("output_size")? {
+                Some(x) => x.extract()?,
+                None => panic!("Input size for network is not defined.")
+            };
 
             let population_size: usize = match config.get_item("population_size")? {
                 Some(x) => x.extract()?,
@@ -70,6 +79,8 @@ impl PopulationApi {
                 Some(x) => x.extract()?,
                 None => panic!("missing population topology rate parameter")
             };
+
+            let genome: EneCode = EneCode::new(input_size, output_size);
 
 
             Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
