@@ -569,10 +569,10 @@ mod tests {
         let mut rng = StdRng::from_seed(seed);
 
         let ene1 = GENOME_EXAMPLE.clone();
-        let mut network1 = NeuralNetwork::new(ene1);
+        let network1 = NeuralNetwork::new(ene1);
 
         let ene2 = GENOME_EXAMPLE2.clone();
-        let mut network2 = NeuralNetwork::new(ene2);
+        let network2 = NeuralNetwork::new(ene2);
 
         let recombined_enecode = network1.recombine_enecode(&mut rng, &network2).unwrap();
 

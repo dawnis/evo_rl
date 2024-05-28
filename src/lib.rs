@@ -14,7 +14,8 @@ pub mod python_api;
 pub mod agent_wrapper;
 
 use rand::prelude::*;
-use enecode::{TopologyGene, NeuronType};
+use enecode::topology::TopologyGene;
+use enecode::NeuronType;
 use log::*;
 use std::collections::HashMap;
 use std::sync::Arc;
