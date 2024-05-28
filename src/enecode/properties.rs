@@ -2,6 +2,7 @@ use std::sync::Arc;
 use pyo3::prelude::*;
 use pyo3::ToPyObject;
 use serde::ser::{Serialize, Serializer, SerializeStruct};
+use serde::Deserialize;
 use pyo3::types::PyDict;
 
 /// Gene that defines the neuronal properties.
@@ -11,7 +12,7 @@ use pyo3::types::PyDict;
 /// * `tau` - The time constant for the neuron.
 /// * `homeostatic_force` - Homeostatic force for neuron.
 /// * `tanh_alpha` - Scaling factor for tanh activation function.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct NeuronalPropertiesGene {
     pub innovation_number: Arc<str>,
     pub tau: f32,

@@ -2,6 +2,7 @@ use std::sync::Arc;
 use pyo3::prelude::*;
 use pyo3::ToPyObject;
 use serde::ser::{Serialize, Serializer, SerializeStruct};
+use serde::Deserialize;
 use std::collections::HashMap;
 use pyo3::types::PyDict;
 use crate::enecode::NeuronType;
@@ -16,7 +17,7 @@ use crate::enecode::NeuronType;
 /// * `genetic_weights` - Weights for each of the input neurons.
 /// * `genetic_bias` - The bias term for the neuron.
 /// * `active` - Whether the neuron is currently active.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct TopologyGene {
     pub innovation_number: Arc<str>,
     pub pin: NeuronType, //stolen from python-neat for outside connections
