@@ -17,7 +17,7 @@ use crate::enecode::NeuronType;
 /// * `genetic_weights` - Weights for each of the input neurons.
 /// * `genetic_bias` - The bias term for the neuron.
 /// * `active` - Whether the neuron is currently active.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TopologyGene {
     pub innovation_number: Arc<str>,
     pub pin: NeuronType, //stolen from python-neat for outside connections

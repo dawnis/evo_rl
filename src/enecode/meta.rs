@@ -19,19 +19,6 @@ pub struct MetaLearningGene {
     pub learning_threshold: f32
 }
 
-impl Serialize for MetaLearningGene {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> 
-    where 
-        S: Serializer,
-        {
-            let mut state = serializer.serialize_struct("MetaLearningGene", 3)?;
-            state.serialize_field("innovation_number", &self.innovation_number.as_ref())?;
-            state.serialize_field("learning_rate", &self.learning_rate)?;
-            state.serialize_field("learning_threshold", &self.learning_threshold)?;
-            state.end()
-        }
-}
-
 impl Default for MetaLearningGene {
     fn default() -> Self {
         Self {
@@ -51,6 +38,20 @@ impl ToPyObject for MetaLearningGene {
         dict.into()
     }
 }
+
+impl Serialize for MetaLearningGene {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> 
+    where 
+        S: Serializer,
+        {
+            let mut state = serializer.serialize_struct("MetaLearningGene", 3)?;
+            state.serialize_field("innovation_number", &self.innovation_number.as_ref())?;
+            state.serialize_field("learning_rate", &self.learning_rate)?;
+            state.serialize_field("learning_threshold", &self.learning_threshold)?;
+            state.end()
+        }
+}
+
 
 impl<'de> Deserialize<'de> for MetaLearningGene {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -119,3 +120,22 @@ impl<'de> Deserialize<'de> for MetaLearningGene {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use log::*;
+    use crate::setup_logger;
+
+    #[test]
+    fn test_serialize_metalearning() {
+        setup_logger();
+
+        let mtg: MetaLearningGene = MetaLearningGene::default();
+        let json = serde_json::to_string_pretty(&mtg).unwrap();
+        debug!("{}", json);
+
+        assert!(json.len() > 0);
+    }
+
+}

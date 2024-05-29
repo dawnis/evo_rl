@@ -77,7 +77,7 @@ pub mod meta;
 ///     });
 /// ```
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[pyclass]
 pub struct EneCode {
     pub neuron_id: Vec<String>, //equivalent to innovation_number in TopologyGene
