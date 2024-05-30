@@ -60,7 +60,7 @@ impl<'de> Deserialize<'de> for MetaLearningGene {
     {
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "lowercase")]
-        enum Field { InnovationNumber, LearningRate, LearningThreshold }
+        enum Field { Innovation_Number, Learning_Rate, Learning_Threshold }
 
         struct MetaLearningGeneVisitor;
 
@@ -81,20 +81,20 @@ impl<'de> Deserialize<'de> for MetaLearningGene {
 
                 while let Some(key) = map.next_key()? {
                     match key {
-                        Field::InnovationNumber => {
+                        Field::Innovation_Number => {
                             if innovation_number.is_some() {
                                 return Err(de::Error::duplicate_field("innovation_number"));
                             }
                             let value: String = map.next_value()?;
                             innovation_number = Some(Arc::from(value.as_str()));
                         }
-                        Field::LearningRate => {
+                        Field::Learning_Rate => {
                             if learning_rate.is_some() {
                                 return Err(de::Error::duplicate_field("learning_rate"));
                             }
                             learning_rate = Some(map.next_value()?);
                         }
-                        Field::LearningThreshold => {
+                        Field::Learning_Threshold => {
                             if learning_threshold.is_some() {
                                 return Err(de::Error::duplicate_field("learning_threshold"));
                             }
@@ -136,6 +136,19 @@ mod tests {
         debug!("{}", json);
 
         assert!(json.len() > 0);
+    }
+
+    #[test]
+    fn test_deserialize_metalearning() {
+        setup_logger();
+
+        let mtg: MetaLearningGene = MetaLearningGene::default();
+        let json = serde_json::to_string_pretty(&mtg).unwrap();
+
+        let mtg_deserialized: MetaLearningGene = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(MetaLearningGene::default(), mtg_deserialized);
+
     }
 
 }

@@ -67,7 +67,7 @@ impl<'de> Deserialize<'de> for NeuronalPropertiesGene {
     {
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "lowercase")]
-        enum Field { InnovationNumber, Tau, HomeostaticForce, TanhAlpha}
+        enum Field { Innovation_Number, Tau, Homeostatic_Force, Tanh_Alpha}
 
         struct NeuronalPropertiesGeneVisitor;
 
@@ -89,7 +89,7 @@ impl<'de> Deserialize<'de> for NeuronalPropertiesGene {
 
                 while let Some(key) = map.next_key()? {
                     match key {
-                        Field::InnovationNumber => {
+                        Field::Innovation_Number => {
                             if innovation_number.is_some() {
                                 return Err(de::Error::duplicate_field("innovation_number"));
                             }
@@ -102,13 +102,13 @@ impl<'de> Deserialize<'de> for NeuronalPropertiesGene {
                             }
                             tau = Some(map.next_value()?);
                         }
-                        Field::HomeostaticForce => {
+                        Field::Homeostatic_Force => {
                             if homeostatic_force.is_some() {
                                 return Err(de::Error::duplicate_field("homeostatic_force"));
                             }
                             homeostatic_force = Some(map.next_value()?);
                         }
-                        Field::TanhAlpha => {
+                        Field::Tanh_Alpha => {
                             if tanh_alpha.is_some() {
                                 return Err(de::Error::duplicate_field("tanh_alpha"));
                             }
@@ -136,3 +136,34 @@ impl<'de> Deserialize<'de> for NeuronalPropertiesGene {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use log::*;
+    use crate::setup_logger;
+
+    #[test]
+    fn test_serialize_neuronalproperties() {
+        setup_logger();
+
+        let npg: NeuronalPropertiesGene = NeuronalPropertiesGene::default();
+        let json = serde_json::to_string_pretty(&npg).unwrap();
+        debug!("{}", json);
+
+        assert!(json.len() > 0);
+    }
+
+    #[test]
+    fn test_deserialize_neuronalproperties() {
+        setup_logger();
+
+        let npg: NeuronalPropertiesGene = NeuronalPropertiesGene::default();
+        let json = serde_json::to_string_pretty(&npg).unwrap();
+
+        let npg_deserialized: NeuronalPropertiesGene = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(NeuronalPropertiesGene::default(), npg_deserialized);
+
+    }
+
+}
