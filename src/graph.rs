@@ -123,6 +123,12 @@ impl NeuralNetwork {
 
     }
 
+    /// Returns serialized representation of genome
+    pub fn serialize_genome(&self) -> String {
+        serde_json::to_string_pretty(&self.genome).unwrap()
+
+    }
+
     /// Cross over recombination of genetic code
     pub fn recombine_enecode<R: Rng>(&self, rng: &mut R, partner: &NeuralNetwork) -> Result<EneCode, GraphConstructionError> {
         if let Ok(offspring_enecode) = self.genome.recombine(rng, &partner.genome) {
