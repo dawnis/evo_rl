@@ -1,6 +1,9 @@
 //! This module contains constants and examples used in unit tests. 
 
 use crate::enecode::*;
+use crate::enecode::meta::MetaLearningGene;
+use crate::enecode::topology::TopologyGene;
+use crate::enecode::properties::NeuronalPropertiesGene;
 use crate::hash_em;
 use std::sync::Arc;
 use std::collections::HashMap;

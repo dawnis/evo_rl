@@ -7,6 +7,7 @@ use log::*;
 use thiserror::Error;
 use std::sync::Arc;
 use std::path::PathBuf;
+use std::io::Result as FileResult;
 use crate::rng_box;
 
 use crate::agent_wrapper::*;
@@ -238,6 +239,10 @@ impl Population {
         }
 
         info!("Observing N={} population with fitness {} on generation {} with max of {} (agent {})", self.agents.len(), self.population_fitness, self.generation, population_max, best_agent_idx);
+    }
+
+    pub fn write_agent_genome(&self, idx: usize, file_path: PathBuf) -> FileResult<()> {
+        self.agents[idx].write_genome(file_path)
     }
 
 }

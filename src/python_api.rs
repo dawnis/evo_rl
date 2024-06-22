@@ -12,6 +12,7 @@ use crate::graph::NeuralNetwork;
 use crate::agent_wrapper::*;
 use crate::population::{Population, PopulationConfig, FitnessValueError};
 use std::path::PathBuf;
+use pyo3::exceptions::PyRuntimeError;
 
 
 #[pyfunction]
@@ -140,6 +141,16 @@ impl PopulationApi {
             err => error!("PyError: {:?}", err)
         }
 
+    }
+
+    pub fn agent_checkpt(&self, idx: usize, file_path: PathBuf) -> PyResult<()> {
+        let write_success = self.population.write_agent_genome(idx, file_path);
+        let py_result = match write_success {
+            Ok(value) => Ok(value),
+            Err(err) => Err(PyRuntimeError::new_err(format!("{}", err)))
+        };
+
+        py_result
     }
 
     pub fn agent_out(&self, idx: usize) -> PyResult<Vec<f32>> {

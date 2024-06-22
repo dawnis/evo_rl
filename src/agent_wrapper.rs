@@ -3,7 +3,11 @@
 use crate::graph::NeuralNetwork;
 use crate::enecode::EneCode;
 use pyo3::prelude::*;
-use pyo3::types::{PyList, PyDict};
+use std::path::PathBuf;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::BufWriter;
+use std::io::Result as FileResult;
 
 pub trait NnInputVector: Send {
     fn into_vec_f32(&self) -> Vec<f32>;
@@ -47,6 +51,15 @@ impl Agent {
 
     pub fn update_fitness(&mut self, new_fitness: f32) {
         self.fitness = new_fitness;
+    }
+
+    pub fn write_genome(&self, file_path: PathBuf) -> FileResult<()> {
+        let serialized_genome = self.nn.serialize_genome();
+        let file = File::create(file_path)?;
+        let mut writer = BufWriter::new(file);
+        writer.write_all(serialized_genome.as_bytes())?;
+        writer.flush()?;
+        Ok(())
     }
 }
 
