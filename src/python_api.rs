@@ -4,6 +4,8 @@ use log::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyFunction, PyDict, PyList, IntoPyDict, PyTuple, PyFloat};
 use pyo3::Py;
+use std::fs::File;
+use std::io::{self, Read};
 use std::collections::HashMap;
 use std::cell::Cell;
 use std::sync::Arc;
@@ -44,7 +46,7 @@ struct PopulationApi {
 #[pymethods]
 impl PopulationApi {
     #[new]
-    pub fn new(pyconfig: Py<PyDict>) -> PyResult<Self> {
+    pub fn new(pyconfig: Py<PyDict>, checkpoint: Option<PathBuf>) -> PyResult<Self> {
 
 
         let population = Python::with_gil(|py| -> PyResult<Population> {
@@ -81,7 +83,13 @@ impl PopulationApi {
                 None => panic!("missing population topology rate parameter")
             };
 
-            let genome: EneCode = EneCode::new(input_size, output_size);
+            let genome: EneCode = match checkpoint {
+                Some(chkpt) => match EneCode::try_from(&chkpt) {
+                    Ok(enecode) => enecode,
+                    Err(err) => panic!("{}", err)
+                },
+                None => EneCode::new(input_size, output_size)
+            };
 
 
             Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
@@ -173,6 +181,17 @@ impl PopulationApi {
     #[getter(fitness)]
     fn fitness(&self) -> PyResult<f32> {
         Ok(self.population.population_fitness)
+    }
+
+    fn deserialize_enecode(&self, agent_checkpoint: PathBuf) -> PyResult<EneCode> {
+        let genome = EneCode::try_from(&agent_checkpoint);
+
+        let py_result = match genome {
+            Ok(value) => Ok(value),
+            Err(err) => Err(PyRuntimeError::new_err(format!("{}", err)))
+        };
+
+        py_result
     }
 
 
