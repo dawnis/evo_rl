@@ -4,6 +4,8 @@ use log::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyFunction, PyDict, PyList, IntoPyDict, PyTuple, PyFloat};
 use pyo3::Py;
+use std::fs::File;
+use std::io::{self, Read};
 use std::collections::HashMap;
 use std::cell::Cell;
 use std::sync::Arc;
@@ -173,6 +175,17 @@ impl PopulationApi {
     #[getter(fitness)]
     fn fitness(&self) -> PyResult<f32> {
         Ok(self.population.population_fitness)
+    }
+
+    fn deserialize_enecode(&self, agent_checkpoint: PathBuf) -> PyResult<EneCode> {
+        let genome = EneCode::try_from(&agent_checkpoint);
+
+        let py_result = match genome {
+            Ok(value) => Ok(value),
+            Err(err) => Err(PyRuntimeError::new_err(format!("{}", err)))
+        };
+
+        py_result
     }
 
 

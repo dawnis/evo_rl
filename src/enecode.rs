@@ -8,6 +8,9 @@ use rand::Rng;
 use rand::seq::IteratorRandom;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::path::PathBuf;
+use std::fs::File;
+use std::io::{self, Read};
 use thiserror::Error;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -139,6 +142,23 @@ impl From<&NeuralNetwork> for EneCode {
         let meta_learning = network.genome.meta_learning.clone();
 
         EneCode::new_from_genome(topology, neuronal_props, meta_learning) 
+    }
+}
+
+impl TryFrom<&PathBuf> for EneCode {
+
+    type Error = serde_json::Error;
+
+    fn try_from(checkpoint: &PathBuf) -> Result<Self, Self::Error> {
+        let mut file = File::open(checkpoint).unwrap();
+        let mut content = String::new();
+
+        let enecode = match file.read_to_string(&mut content) {
+            Ok(_) => serde_json::from_str(&content),
+            Err(err) => panic!("{}", err)
+        };
+
+        enecode
     }
 }
 
