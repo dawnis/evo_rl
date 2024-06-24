@@ -44,3 +44,22 @@ while p.generation < 1000:
 
 #visualize_gen("mc_agents/mountaincar_0200")
 #mc.observe(p, 128)
+
+#example code for checkpointing a particular agent (51) and starting a new population with the checkpt genome
+mc.write_agent(p, 51, "path/to/agents/mc_agents/agent_checkpt.json")
+
+#start new population with same config but checkpt genome
+v = evo_rl.PopulationApi(configuration, "path/to/agents/mc_agents/agent_checkpt.json")
+
+#re-run same task with new popualtion -- should take fewer generations
+while v.generation < 1000:
+
+    for agent in range(population_size):
+        mc.evaluate_agent(v, agent)
+
+    if v.fitness > 100:
+        break
+        
+    v.update_population_fitness()
+    v.report()
+    v.evolve_step()
