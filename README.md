@@ -14,7 +14,7 @@ Alternatively, [EvoJAX](https://github.com/google/evojax) presents a more comple
 
 
 ## Python
-An python package (evo_rl) can be built by running `maturin develop` in the source code. Examples are included in the `python` directory. 
+A python package (evo_rl) can be built by running `maturin develop` in the source code. Examples are included in the `python` directory. 
 
 ## Running Tests
 
