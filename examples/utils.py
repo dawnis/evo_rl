@@ -65,3 +65,6 @@ class MountainCarEnvironment:
                 observation, info = self.env.reset()
 
         self.env.close()
+
+    def write_agent(self, population, agent_idx, file_save_path):
+        population.agent_checkpt(agent_idx, file_save_path)

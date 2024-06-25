@@ -21,7 +21,7 @@ A python package (evo_rl) can be built by running `maturin develop` in the sourc
 A code snippet is reproduced here:
 
 ```
-#A script which trains an agent to solve the mountain car task in OpenAI's Gymnasium
+#A Python script which trains an agent to solve the mountain car task in OpenAI's Gymnasium
 
 import evo_rl
 import logging
@@ -41,11 +41,12 @@ configuration = {
         "population_size": population_size,
         "survival_rate": 0.2,
         "mutation_rate": 0.4, 
+        "input_size": 2,
+        "output_size": 2,
         "topology_mutation_rate": 0.4,
         "project_name": "mountaincar",
         "project_directory": "mc_agents"
         }
-
 
 env = gym.make('MountainCarContinuous-v0')
 mc = MountainCarEnvironment(env, configuration)
