@@ -11,7 +11,11 @@ configuration = {
         "population_size": population_size,
         "survival_rate": 0.2,
         "mutation_rate": 0.4, 
-        "topology_mutation_rate": 0.4
+        "topology_mutation_rate": 0.4,
+        "input_size": 2,
+        "output_size": 1,
+        "project_name": "xor",
+        "project_directory": "xor_agents"
         }
 
 

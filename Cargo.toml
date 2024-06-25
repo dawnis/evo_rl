@@ -29,6 +29,13 @@ log = "0.4.20"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata]
+documentation = "https://docs.rs/evo_rl"
+repository = "https://github.com/dawnis/evo_rl"
+
 [dev-dependencies]
 assert_matches = "1.5"
 

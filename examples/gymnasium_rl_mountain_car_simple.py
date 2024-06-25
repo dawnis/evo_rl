@@ -3,7 +3,6 @@
 import evo_rl
 import logging
 
-
 from utils import MountainCarEnvironment, visualize_gen
 
 import gymnasium as gym
@@ -20,6 +19,8 @@ configuration = {
         "survival_rate": 0.2,
         "mutation_rate": 0.4, 
         "topology_mutation_rate": 0.4,
+        "input_size": 2,
+        "output_size": 2,
         "project_name": "mountaincar",
         "project_directory": "mc_agents"
         }
