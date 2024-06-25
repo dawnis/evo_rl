@@ -6,7 +6,7 @@ licensefile = "LICENSE"
 version = "0.1.0-alpha.4"
 edition = "2021"
 authors = ["Dawnis Chow"]
-exclude =[".dot", ".png", "jupyter/", "agents/", ".ipynb_checkpoints/", "python/"]
+exclude =[".dot", ".png", "jupyter/", "agents/", ".ipynb_checkpoints/", "examples/"]
 
 [lib]
 name = "evo_rl"
