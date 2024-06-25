@@ -13,7 +13,7 @@ A survey/discussion of recent advances and other packages in this area as of 202
 Alternatively, [EvoJAX](https://github.com/google/evojax) presents a more complete and scalable toolkit which implements many neuroevolution algorithms.
 
 ## Repo
-The code for the repo is located on [Github](https:://github.com/dawnis/evo_rl). 
+The code for the repo is located [here](https://github.com/dawnis/evo_rl). 
 
 ## Python
 A python package (evo_rl) can be built by running `maturin develop` in the source code. Examples are included in the `examples` directory. 
