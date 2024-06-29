@@ -22,6 +22,10 @@ class GymnasiumEnv:
         self.observation_steps = 999
         self.configuration = configuration
 
+    def bound_action(self, action_raw):
+        """Bounds output action to action space"""
+        return action_raw
+
     def observe(self, population, idx):
         self.env = gym.make(self.env_name, render_mode="human")
         agent_idx = idx
@@ -29,7 +33,8 @@ class GymnasiumEnv:
 
         for _ in range(self.evaluation_steps):
             population.agent_fwd(agent_idx, list(observation))
-            action = population.agent_out(agent_idx)
+            action_raw = population.agent_out(agent_idx)
+            action = self.bound_action(action_raw)
             observation, reward, terminated, truncated, info = self.env.step(action)
 
             if terminated or truncated:
@@ -45,24 +50,38 @@ class CartPoleEnvironment(GymnasiumEnv):
     def __init__(self, configuration): 
         super().__init__("CartPole-v1", configuration)
 
+    def bound_action(self, action_raw):
+        """Bounds action output to acceptable action space"""
+        bool_action = action_raw[0] > 0
+        return int(bool_action)
+
     def evaluate_agent(self, population, agent_idx):
         observation, info = self.env.reset()
         fitness = 0
+        termination_penalty = min([100 * population.generation + 1, 1000])
+        step = 0
 
         for _ in range(self.evaluation_steps):
+            step += 1
             population.agent_fwd(agent_idx, list(observation))
-            action = population.agent_out(agent_idx)
+            action_raw = population.agent_out(agent_idx)
+            action = self.bound_action(action_raw)
             observation, reward, terminated, truncated, info = self.env.step(action)
 
             reward_delta = reward #sometimes there are NaNs, which crash the program
 
-            if reward_delta == reward_delta:
+            if (reward_delta == reward_delta) & (step > 9):
                 fitness += reward_delta #forward progress + clipped reward penalty - complexity penalty
 
             if fitness != fitness:
                 print(f"Error! Observing NaN Fitness")
-                
+
             if terminated or truncated:
+                #penalize every termination with a constant penalty
+                step = 0
+                new_fitness = fitness - termination_penalty
+                fitness = max([new_fitness, 0])
+
                 observation, info = self.env.reset()
 
         #print(f"Setting agent {agent_idx} fitness to {fitness}")
