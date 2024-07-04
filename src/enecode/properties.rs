@@ -62,7 +62,7 @@ impl Serialize for NeuronalPropertiesGene {
     where 
         S: Serializer,
         {
-            let mut state = serializer.serialize_struct("NeuronalPropertiesGene", 4)?;
+            let mut state = serializer.serialize_struct("NeuronalPropertiesGene", 5)?;
             state.serialize_field("innovation_number", &self.innovation_number.as_ref())?;
             state.serialize_field("module", &self.module.as_ref())?;
             state.serialize_field("tau", &self.tau)?;
@@ -182,6 +182,8 @@ mod tests {
 
         let npg: NeuronalPropertiesGene = NeuronalPropertiesGene::default();
         let json = serde_json::to_string_pretty(&npg).unwrap();
+
+        debug!("{}", json);
 
         let npg_deserialized: NeuronalPropertiesGene = serde_json::from_str(&json).unwrap();
 

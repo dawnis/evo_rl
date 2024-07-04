@@ -155,12 +155,18 @@ impl PopulationApi {
                 None => panic!("missing population topology rate parameter")
             };
 
+            let network_module: Option<String> = match config.get_item("network_module")? {
+                Some(x) => Some(x.extract()?),
+                None => None
+            };
+
+
             let genome: EneCode = match checkpoint {
                 Some(chkpt) => match EneCode::try_from(&chkpt) {
                     Ok(enecode) => enecode,
                     Err(err) => panic!("{}", err)
                 },
-                None => EneCode::new(input_size, output_size, None)
+                None => EneCode::new(input_size, output_size, network_module.as_deref())
             };
 
 
