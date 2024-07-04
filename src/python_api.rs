@@ -160,7 +160,7 @@ impl PopulationApi {
                     Ok(enecode) => enecode,
                     Err(err) => panic!("{}", err)
                 },
-                None => EneCode::new(input_size, output_size)
+                None => EneCode::new(input_size, output_size, None)
             };
 
 

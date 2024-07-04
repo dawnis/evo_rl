@@ -167,7 +167,7 @@ impl EneCode {
     //TODO: Default constructors for all *gene structs
     
     ///Constructor function for basic genome with defined number of inputs/outputs
-    pub fn new(num_inputs: usize, num_outputs: usize) -> Self {
+    pub fn new(num_inputs: usize, num_outputs: usize, module: Option<&str>) -> Self {
 
         // Generate topology with a default rule for hidden progenitors. 
         let topology_s: Vec<TopologyGene> = EneCode::generate_new_topology(num_inputs, num_inputs, num_outputs);
@@ -175,10 +175,15 @@ impl EneCode {
         // generate owned string of neuron id
         let neuron_id: Vec<String> = topology_s.iter().map(|x| String::from(&*x.innovation_number)).collect();
         
+        let neuronal_props: NeuronalPropertiesGene =  match module {
+            Some(x) => NeuronalPropertiesGene::new(x),
+            None => NeuronalPropertiesGene::default()
+        };
+
         Self {
             neuron_id,
             topology: topology_s,
-            neuronal_props: NeuronalPropertiesGene::default(),
+            neuronal_props,
             meta_learning: MetaLearningGene::default()
         }
 

@@ -36,6 +36,15 @@ impl Default for NeuronalPropertiesGene {
     }
 }
 
+impl NeuronalPropertiesGene {
+    pub fn new(module_type: &str) -> Self {
+        Self {
+            module: Arc::from(module_type),
+            ..Default::default()
+        }
+    }
+}
+
 impl ToPyObject for NeuronalPropertiesGene {
     fn to_object(&self, py: Python<'_>) -> PyObject {
         let dict = PyDict::new(py);
