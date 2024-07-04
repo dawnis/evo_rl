@@ -17,6 +17,7 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeuronalPropertiesGene {
     pub innovation_number: Arc<str>,
+    pub module: Arc<str>,
     pub tau: f32,
     pub homeostatic_force: f32,
     pub tanh_alpha: f32,
@@ -26,6 +27,7 @@ impl Default for NeuronalPropertiesGene {
     fn default() -> Self {
         Self {
             innovation_number: Arc::from("p01"),
+            module: Arc::from("Engine"),
             tau: 0.,
             homeostatic_force: 0., 
             tanh_alpha: 1.
@@ -38,6 +40,7 @@ impl ToPyObject for NeuronalPropertiesGene {
     fn to_object(&self, py: Python<'_>) -> PyObject {
         let dict = PyDict::new(py);
         dict.set_item("innovation_number", &self.innovation_number.to_string());
+        dict.set_item("module", &self.module.to_string());
         dict.set_item("tau", self.tau);
         dict.set_item("homeostatic_force", self.homeostatic_force);
         dict.set_item("tanh_alpha", self.tanh_alpha);
@@ -52,6 +55,7 @@ impl Serialize for NeuronalPropertiesGene {
         {
             let mut state = serializer.serialize_struct("NeuronalPropertiesGene", 4)?;
             state.serialize_field("innovation_number", &self.innovation_number.as_ref())?;
+            state.serialize_field("module", &self.module.as_ref())?;
             state.serialize_field("tau", &self.tau)?;
             state.serialize_field("homeostatic_force", &self.homeostatic_force)?;
             state.serialize_field("tanh_alpha", &self.tanh_alpha)?;
@@ -67,7 +71,7 @@ impl<'de> Deserialize<'de> for NeuronalPropertiesGene {
     {
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "lowercase")]
-        enum Field { Innovation_Number, Tau, Homeostatic_Force, Tanh_Alpha}
+        enum Field { Innovation_Number, Module, Tau, Homeostatic_Force, Tanh_Alpha}
 
         struct NeuronalPropertiesGeneVisitor;
 
@@ -83,6 +87,7 @@ impl<'de> Deserialize<'de> for NeuronalPropertiesGene {
                 V: MapAccess<'de>,
             {
                 let mut innovation_number = None;
+                let mut module = None;
                 let mut tau = None;
                 let mut homeostatic_force = None;
                 let mut tanh_alpha = None;
@@ -95,6 +100,13 @@ impl<'de> Deserialize<'de> for NeuronalPropertiesGene {
                             }
                             let value: String = map.next_value()?;
                             innovation_number = Some(Arc::from(value.as_str()));
+                        }
+                        Field::Module => {
+                            if module.is_some() {
+                                return Err(de::Error::duplicate_field("module"));
+                            }
+                            let value: String = map.next_value()?;
+                            module = Some(Arc::from(value.as_str()));
                         }
                         Field::Tau => {
                             if tau.is_some() {
@@ -118,12 +130,14 @@ impl<'de> Deserialize<'de> for NeuronalPropertiesGene {
                 }
 
                 let innovation_number = innovation_number.ok_or_else(|| de::Error::missing_field("innovation_number"))?;
+                let module = module.ok_or_else(|| de::Error::missing_field("module"))?;
                 let tau = tau.ok_or_else(|| de::Error::missing_field("tau"))?;
                 let homeostatic_force = homeostatic_force.ok_or_else(|| de::Error::missing_field("homeostatic_force"))?;
                 let tanh_alpha = tanh_alpha.ok_or_else(|| de::Error::missing_field("homeostatic_force"))?;
 
                 Ok(NeuronalPropertiesGene {
                     innovation_number,
+                    module,
                     tau,
                     homeostatic_force,
                     tanh_alpha
