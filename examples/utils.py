@@ -64,12 +64,12 @@ class LunarLanderEnv(GymnasiumEnv):
 
         if action_value == 0:
             return 0
-        elif action_value < -1:
+        elif action_value < -0.5:
             return 1
-        elif action_value > 1:
-            return 2
+        elif action_value > 0.5:
+            return 3
         else: 
-            return 0
+            return 2
         
     def evaluate_agent(self, population, agent_idx):
         fitness = 0

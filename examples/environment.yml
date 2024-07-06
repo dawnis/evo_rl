@@ -1,0 +1,16 @@
+name: pyo3
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - scipy
+  - numpy
+  - pip
+  - pip:
+    - graphviz
+    - gymnasium==0.29.1
+    - ipykernel
+    - ipython
+    - jupyterlab
+    - maturin
