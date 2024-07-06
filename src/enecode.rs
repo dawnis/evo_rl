@@ -167,9 +167,7 @@ impl EneCode {
     //TODO: Default constructors for all *gene structs
     
     ///Constructor function for basic genome with defined number of inputs/outputs
-    pub fn new(num_inputs: usize, num_outputs: usize, module: Option<&str>) -> Self {
-
-        let num_hidden = num_inputs;
+    pub fn new(num_inputs: usize, num_hidden: usize, num_outputs: usize, module: Option<&str>) -> Self {
 
         // Generate topology with a default rule for hidden progenitors. 
         let topology_s: Vec<TopologyGene> = EneCode::generate_new_topology(num_inputs, num_outputs, num_hidden);

@@ -130,6 +130,11 @@ impl PopulationApi {
                 None => panic!("Input size for network is not defined.")
             };
 
+            let hidden_size: usize = match config.get_item("hidden_size")? {
+                Some(x) => x.extract()?,
+                None => panic!("Hidden unit size for network is not defined.")
+            };
+
             let output_size: usize = match config.get_item("output_size")? {
                 Some(x) => x.extract()?,
                 None => panic!("Input size for network is not defined.")
@@ -166,7 +171,7 @@ impl PopulationApi {
                     Ok(enecode) => enecode,
                     Err(err) => panic!("{}", err)
                 },
-                None => EneCode::new(input_size, output_size, network_module.as_deref())
+                None => EneCode::new(input_size, hidden_size, output_size, network_module.as_deref())
             };
 
 
