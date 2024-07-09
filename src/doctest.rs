@@ -38,6 +38,7 @@ lazy_static! {
      ],
      NeuronalPropertiesGene {
          innovation_number: Arc::from("NP01"),
+         module: Arc::from("Rocinante"),
          tau: 0.9,
          homeostatic_force: 0.1,
          tanh_alpha: 1.,
@@ -91,6 +92,7 @@ lazy_static! {
      ],
      NeuronalPropertiesGene {
          innovation_number: Arc::from("NP01"),
+         module: Arc::from("Rocinante"),
          tau: 0.9,
          homeostatic_force: 0.1,
          tanh_alpha: 1.,
@@ -110,6 +112,7 @@ lazy_static! {
 
     pub static ref NEURONAL_PROPERTIES_GENE_EXAMPLE: NeuronalPropertiesGene = NeuronalPropertiesGene {
             innovation_number: Arc::from("npg01"),
+            module: Arc::from("Engine"),
             tau: 0.,
             homeostatic_force: 0., 
             tanh_alpha: 1.,

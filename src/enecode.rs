@@ -167,18 +167,23 @@ impl EneCode {
     //TODO: Default constructors for all *gene structs
     
     ///Constructor function for basic genome with defined number of inputs/outputs
-    pub fn new(num_inputs: usize, num_outputs: usize) -> Self {
+    pub fn new(num_inputs: usize, num_hidden: usize, num_outputs: usize, module: Option<&str>) -> Self {
 
         // Generate topology with a default rule for hidden progenitors. 
-        let topology_s: Vec<TopologyGene> = EneCode::generate_new_topology(num_inputs, num_inputs, num_outputs);
+        let topology_s: Vec<TopologyGene> = EneCode::generate_new_topology(num_inputs, num_outputs, num_hidden);
         
         // generate owned string of neuron id
         let neuron_id: Vec<String> = topology_s.iter().map(|x| String::from(&*x.innovation_number)).collect();
         
+        let neuronal_props: NeuronalPropertiesGene =  match module {
+            Some(x) => NeuronalPropertiesGene::new(x),
+            None => NeuronalPropertiesGene::default()
+        };
+
         Self {
             neuron_id,
             topology: topology_s,
-            neuronal_props: NeuronalPropertiesGene::default(),
+            neuronal_props,
             meta_learning: MetaLearningGene::default()
         }
 
@@ -489,6 +494,17 @@ mod tests {
         x01_input_keys.sort();
 
         assert_eq!(vec!["h00", "h01"], x01_input_keys);
+
+        let topology3 = EneCode::generate_new_topology(6, 4, 3);
+        let t3inputs: Vec<&TopologyGene> = topology3.iter().filter(|&t| t.pin == NeuronType::In).collect();
+        assert_eq!(t3inputs.len(), 6);
+
+        let t3hidden: Vec<&TopologyGene> = topology3.iter().filter(|&t| t.pin == NeuronType::Hidden).collect();
+        assert_eq!(t3hidden.len(), 3);
+
+        let t3output: Vec<&TopologyGene> = topology3.iter().filter(|&t| t.pin == NeuronType::Out).collect();
+        assert_eq!(t3output.len(), 4);
+
 
     }
 

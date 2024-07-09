@@ -130,6 +130,11 @@ impl PopulationApi {
                 None => panic!("Input size for network is not defined.")
             };
 
+            let hidden_size: usize = match config.get_item("hidden_size")? {
+                Some(x) => x.extract()?,
+                None => panic!("Hidden unit size for network is not defined.")
+            };
+
             let output_size: usize = match config.get_item("output_size")? {
                 Some(x) => x.extract()?,
                 None => panic!("Input size for network is not defined.")
@@ -155,12 +160,18 @@ impl PopulationApi {
                 None => panic!("missing population topology rate parameter")
             };
 
+            let network_module: Option<String> = match config.get_item("network_module")? {
+                Some(x) => Some(x.extract()?),
+                None => None
+            };
+
+
             let genome: EneCode = match checkpoint {
                 Some(chkpt) => match EneCode::try_from(&chkpt) {
                     Ok(enecode) => enecode,
                     Err(err) => panic!("{}", err)
                 },
-                None => EneCode::new(input_size, output_size)
+                None => EneCode::new(input_size, hidden_size, output_size, network_module.as_deref())
             };
 
 

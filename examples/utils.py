@@ -1,7 +1,9 @@
 from graphviz import Source
 from IPython.display import display
+from scipy.special import expit
 
 import gymnasium as gym
+import numpy as np
 import random
 
 def visualize_gen(filename):
@@ -12,6 +14,13 @@ def visualize_gen(filename):
     display(source)
     output_path = source.render(filename=file_path, format='png')
     return file_path
+
+def bound_discrete(x):
+    """transforms a continuous network output into either 0 or 1 using expit function from scipy"""
+    expit_x = expit(x)
+    action = expit_x >= 0.5
+    return int(action)
+
 
 class GymnasiumEnv:
 
@@ -45,6 +54,48 @@ class GymnasiumEnv:
     def write_agent(self, population, agent_idx, file_save_path):
         population.agent_checkpt(agent_idx, file_save_path)
 
+class LunarLanderEnv(GymnasiumEnv):
+
+    def __init__(self, configuration): 
+        super().__init__("LunarLander-v2", configuration)
+
+    def bound_action(self, action_raw):
+        action_value = action_raw[0]
+
+        if action_value == 0:
+            return 0
+        elif action_value < -0.5:
+            return 1
+        elif action_value > 0.5:
+            return 3
+        else: 
+            return 2
+        
+    def evaluate_agent(self, population, agent_idx):
+        fitness = 0
+        observation, info = self.env.reset()
+
+        for _ in range(self.evaluation_steps):
+            population.agent_fwd(agent_idx, list(observation))
+            action_raw = population.agent_out(agent_idx)
+            action = self.bound_action(action_raw)
+            observation, reward, terminated, truncated, info = self.env.step(action)
+
+            fitness += reward
+
+            if fitness != fitness:
+                print(f"Error! Observing NaN Fitness")
+
+            if terminated or truncated:
+                observation, info = self.env.reset()
+
+        fitness -= 0.1 * population.agent_complexity(agent_idx)
+        
+        if fitness < 0:
+            population.set_agent_fitness(agent_idx, random.uniform(0, 1))
+        else:
+            population.set_agent_fitness(agent_idx, fitness)
+
 class CartPoleEnvironment(GymnasiumEnv):
 
     def __init__(self, configuration): 
@@ -52,8 +103,7 @@ class CartPoleEnvironment(GymnasiumEnv):
 
     def bound_action(self, action_raw):
         """Bounds action output to acceptable action space"""
-        bool_action = action_raw[0] > 0
-        return int(bool_action)
+        return bound_discrete(action_raw[0])
 
     def evaluate_agent(self, population, agent_idx):
         observation, info = self.env.reset()
