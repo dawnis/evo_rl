@@ -10,7 +10,7 @@ pub mod enecode;
 pub mod graph;
 pub mod doctest;
 pub mod population;
-pub mod python_api;
+pub mod api;
 pub mod agent_wrapper;
 
 use rand::prelude::*;
