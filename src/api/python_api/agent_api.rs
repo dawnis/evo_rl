@@ -60,6 +60,25 @@ impl AgentApi {
 
     }
 
+    /// Evaluates an agent's otuput given an input vector.
+    pub fn fwd(&mut self, input: Py<PyList>) {
+        let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+            let input_vec = input.as_ref(py);
+            input_vec.iter()
+                .map(|p| p.extract::<f32>())
+                .collect()
+            });
 
+        match py_vec {
+            Ok(v) => self.agent.fwd(v),
+            err => error!("PyError: {:?}", err)
+        }
+    }
+
+
+    /// Gets the agent's current output value. 
+    pub fn output(&self) -> PyResult<Vec<f32>> {
+        Ok(self.agent.output())
+    }
 }
 
