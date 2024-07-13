@@ -2,38 +2,13 @@
 //! Python
 use log::*;
 use pyo3::prelude::*;
-use pyo3::types::{PyFunction, PyDict, PyList, IntoPyDict, PyTuple, PyFloat};
+use pyo3::types::{PyDict, PyList};
 use pyo3::Py;
-use std::fs::File;
-use std::io::{self, Read};
-use std::collections::HashMap;
-use std::cell::Cell;
 use std::sync::Arc;
 use crate::enecode::EneCode;
-use crate::graph::NeuralNetwork;
-use crate::agent_wrapper::*;
-use crate::population::{Population, PopulationConfig, FitnessValueError};
+use crate::population::{Population, PopulationConfig};
 use std::path::PathBuf;
 use pyo3::exceptions::PyRuntimeError;
-
-
-#[pyfunction]
-fn log_something() {
-    // This will use the logger installed in `my_module` to send the `info`
-    // message to the Python logging facilities.
-    info!("This is a test of pyo3-logging.");
-}
-
-/// A Python module for evo_rl implemented in Rust. The name of this function must match
-/// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
-/// import the module.
-#[pymodule]
-fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    pyo3_log::init();
-    m.add_class::<PopulationApi>()?;
-    let _ = m.add_function(wrap_pyfunction!(log_something, m)?);
-    Ok(())
-}
 
 #[pyclass]
 /// `PopulationApi` is the main entry point from Python to interact with evo_rl. 
