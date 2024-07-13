@@ -4,6 +4,7 @@ use log::*;
 use pyo3::prelude::*;
 
 mod population_api;
+mod agent_api;
 
 #[pyfunction]
 fn log_something() {
@@ -19,6 +20,7 @@ fn log_something() {
 fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
     m.add_class::<population_api::PopulationApi>()?;
+    m.add_class::<agent_api::AgentApi>()?;
     let _ = m.add_function(wrap_pyfunction!(log_something, m)?);
     Ok(())
 }
