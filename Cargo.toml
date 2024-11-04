@@ -7,6 +7,8 @@ version = "0.1.0-alpha.4"
 edition = "2021"
 authors = ["Dawnis Chow"]
 exclude =[".dot", ".png", "jupyter/", "agents/", ".ipynb_checkpoints/", "examples/"]
+repository = "https://github.com/dawnis/evo_rl"
+readme = "README.md"
 
 [lib]
 name = "evo_rl"

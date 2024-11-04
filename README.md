@@ -12,8 +12,8 @@ A survey/discussion of recent advances and other packages in this area as of 202
 
 Alternatively, [EvoJAX](https://github.com/google/evojax) presents a more complete and scalable toolkit which implements many neuroevolution algorithms.
 
-## Repo
-The code for the repo is located [here](https://github.com/dawnis/evo_rl). 
+## Website
+This library is part of my startup project, [Sentient AI](https://www.evosentientai.com/). Please refer there for roadmap/vision around this library.
 
 ## Python
 A python package (evo_rl) can be built by running `maturin develop` in the source code. Examples are included in the `examples` directory. 
