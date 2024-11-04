@@ -8,6 +8,7 @@ edition = "2021"
 authors = ["Dawnis Chow"]
 exclude =[".dot", ".png", "jupyter/", "agents/", ".ipynb_checkpoints/", "examples/"]
 repository = "https://github.com/dawnis/evo_rl"
+homepage = "https://www.evosentientai.com/"
 readme = "README.md"
 
 [lib]
