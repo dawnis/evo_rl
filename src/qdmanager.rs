@@ -3,10 +3,29 @@
 
 use reqwest::Client;
 use std::error::Error;
+use std::sync::Arc;
+use std::collections::HashMap;
 
-pub struct QDManager {}
+use crate::enecode::EneCode;
+
+
+//TODO: MVP is to keep track of a single genome parameterized as X=0 and y=0
+pub struct QDManager {
+   module: Arc<str>,
+   endpoint: Arc<str>,
+   library: HashMap<(i32, i32), EneCode>
+
+}
 
 impl QDManager {
+
+    pub fn new(module: Arc<str>, endpoint: Arc<str>) -> Self {
+        QDManager {
+            module,
+            endpoint
+        }
+    }
+
     pub fn post_genome(&self, full_api_endpoint: &str) -> Result<String, Box<dyn Error>> {
         let r_client = Client::new();
         let serialized_genome = self.nn.serialize_genome();
