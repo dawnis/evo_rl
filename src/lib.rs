@@ -12,6 +12,7 @@ pub mod doctest;
 pub mod population;
 pub mod api;
 pub mod agent_wrapper;
+pub mod qdmanager;
 
 use rand::prelude::*;
 use enecode::topology::TopologyGene;
