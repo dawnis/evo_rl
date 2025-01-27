@@ -14,7 +14,7 @@ use crate::enecode::EneCode;
 pub struct QDManager {
    module: Arc<str>,
    endpoint: Arc<str>,
-   library: HashMap<(i32, i32), EneCode>
+   qdlib: HashMap<(i32, i32), EneCode>
 
 }
 
@@ -39,18 +39,35 @@ async fn fetch_genome(full_api_endpoint: &str, module: &str, location: (i32, i32
 
 impl QDManager {
 
-    pub fn new(module: Arc<str>, endpoint: Arc<str>) -> Self {
+    pub async fn new(module: Arc<str>, endpoint: Arc<str>) -> Self {
+
+        let seed = match fetch_genome(&endpoint, &module, (0, 0)).await {
+            Ok(s) => s,
+            Err(e) => panic!("Error fetching genome: {}", e)
+
+        };
+
+        let mut qdlib: HashMap<(i32, i32), EneCode> = HashMap::new();
+        qdlib.insert((0, 0), seed);
+
         QDManager {
             module,
             endpoint,
-            library: HashMap::new(),
+            qdlib,
         }
     }
 
-    pub fn poplation_vector(population_size: usize) -> Vec<Agent> {
-        //TODO: for now assume that the module has entries in the database. If it is new,
-        //will deal with this later
+    pub fn fetchg(&self, location: (i32, i32)) -> &EneCode {
+        match self.qdlib.get(&location) {
+            Some(g) => g,
+            None => panic!("Location not represented in library")
+        }
     }
+
+    // pub fn poplation_vector(population_size: usize) -> Vec<Agent> {
+    //     //TODO: for now assume that the module has entries in the database. If it is new,
+    //     //will deal with this later
+    // }
 
 
     // pub fn post_genome(&self, full_api_endpoint: &str) -> Result<String, Box<dyn Error>> {

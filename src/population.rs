@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use std::io::Result as FileResult;
 use crate::rng_box;
+use crate::qdmanager::QDManager;
 
 use crate::agent_wrapper::*;
 use crate::{graph::NeuralNetwork, enecode::EneCode};
@@ -35,7 +36,7 @@ impl PopulationConfig {
     pub fn new(project_name: Arc<str>,
                home_directory: Option<Arc<PathBuf>>,
                epoch_size: usize, 
-               mutation_rate_scale_per_epoch: f32, 
+               mutation_frate_scale_per_epoch: f32, 
                mutation_effect_scale_per_epoch: f32,
                visualize_best_agent: bool,
                rng_seed: Option<u8>) -> Self {
@@ -72,8 +73,10 @@ pub struct Population {
 
 impl Population {
 
-    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
+    pub fn new(qdm: QDManager, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
         let mut agent_vector:Vec<Agent> = Vec::new();
+        let genome_base = qdm.fetchg((0,0));
+
 
         for _idx in 0..population_size {
             let mut agent = Agent::new(genome_base.clone());
