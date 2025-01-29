@@ -36,7 +36,7 @@ impl PopulationConfig {
     pub fn new(project_name: Arc<str>,
                home_directory: Option<Arc<PathBuf>>,
                epoch_size: usize, 
-               mutation_frate_scale_per_epoch: f32, 
+               mutation_rate_scale_per_epoch: f32, 
                mutation_effect_scale_per_epoch: f32,
                visualize_best_agent: bool,
                rng_seed: Option<u8>) -> Self {
@@ -73,21 +73,22 @@ pub struct Population {
 
 impl Population {
 
-    pub fn new(qdm: QDManager, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
-        let mut agent_vector:Vec<Agent> = Vec::new();
-        let genome_base = qdm.fetchg((0,0));
+    pub fn new(agents: Vec<Agent>, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
 
-
-        for _idx in 0..population_size {
-            let mut agent = Agent::new(genome_base.clone());
-
-            //Random mutation of newly initialized population members
-            agent.mutate(1., 10., 0.);
-            agent_vector.push(agent);
-        }
+        // let mut agent_vector:Vec<Agent> = Vec::new();
+        // let genome_base = qdm.fetchg((0,0));
+        //
+        //
+        // for _idx in 0..population_size {
+        //     let mut agent = Agent::new(genome_base.clone());
+        //
+        //     //Random mutation of newly initialized population members
+        //     agent.mutate(1., 10., 0.);
+        //     agent_vector.push(agent);
+        // }
 
         Population {
-            agents: agent_vector,
+            agents,
             topology_mutation_rate,
             mutation_rate, 
             mutation_effect_sd: 5.,

@@ -1,7 +1,7 @@
 //!This module implements a struct which manages the quality-diversity database associated with a
 //!particular module.
 
-use reqwest::Client;
+use reqwest::{Client, Url};
 use std::error::Error;
 use std::sync::Arc;
 use std::collections::HashMap;
@@ -13,12 +13,12 @@ use crate::enecode::EneCode;
 //TODO: MVP is to keep track of a single genome parameterized as X=0 and y=0
 pub struct QDManager {
    module: Arc<str>,
-   endpoint: Arc<str>,
+   endpoint: Option<Url>,
    qdlib: HashMap<(i32, i32), EneCode>
 
 }
 
-async fn fetch_genome(full_api_endpoint: &str, module: &str, location: (i32, i32)) -> Result<EneCode, Box<dyn Error>> {
+async fn fetch_genome(full_api_endpoint: Url, module: &str, location: (i32, i32)) -> Result<EneCode, Box<dyn Error>> {
 
         let r_client = Client::new();
     
@@ -39,9 +39,29 @@ async fn fetch_genome(full_api_endpoint: &str, module: &str, location: (i32, i32
 
 impl QDManager {
 
-    pub async fn new(module: Arc<str>, endpoint: Arc<str>) -> Self {
+    pub fn new_from_genome(module: Arc<str>, endpoint: Option<Url>, genome_base: EneCode) -> Self {
+        let mut qdlib: HashMap<(i32, i32), EneCode> = HashMap::new();
+        qdlib.insert((0, 0), genome_base);
 
-        let seed = match fetch_genome(&endpoint, &module, (0, 0)).await {
+        QDManager {
+            module,
+            endpoint,
+            qdlib,
+        }
+
+    }
+
+    pub async fn new(module: Arc<str>, endpoint: Option<Url>) -> Self {
+
+        let endpt = endpoint.clone();
+
+        let api = match endpt {
+            Some(url) => url,
+            None => panic!("Expected a valid url for qdm connection!")
+        };
+        
+
+        let seed = match fetch_genome(api, &module, (0, 0)).await {
             Ok(s) => s,
             Err(e) => panic!("Error fetching genome: {}", e)
 
@@ -50,11 +70,15 @@ impl QDManager {
         let mut qdlib: HashMap<(i32, i32), EneCode> = HashMap::new();
         qdlib.insert((0, 0), seed);
 
-        QDManager {
+        Self {
             module,
             endpoint,
             qdlib,
         }
+    }
+
+    pub async fn postg(&self) {
+        //Posts genome into Postgres db
     }
 
     pub fn fetchg(&self, location: (i32, i32)) -> &EneCode {
@@ -62,6 +86,23 @@ impl QDManager {
             Some(g) => g,
             None => panic!("Location not represented in library")
         }
+    }
+
+    pub fn gen_agent_vector(&self, vector_size: usize) -> Vec<Agent> {
+
+        let mut agent_vector:Vec<Agent> = Vec::new();
+        let genome_base = self.fetchg((0,0));
+        
+        
+        for _idx in 0..vector_size {
+            let mut agent = Agent::new(genome_base.clone());
+        
+            //Random mutation of newly initialized population members
+            agent.mutate(1., 10., 0.);
+            agent_vector.push(agent);
+        }
+
+        agent_vector
     }
 
     // pub fn poplation_vector(population_size: usize) -> Vec<Agent> {
