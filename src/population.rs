@@ -5,12 +5,15 @@ use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use log::*;
 use thiserror::Error;
+
+use reqwest::Url;
+
 use std::sync::Arc;
 use std::path::PathBuf;
 use std::io::Result as FileResult;
-use crate::rng_box;
-use crate::qdmanager::QDManager;
 
+use crate::qdmanager::QDManager;
+use crate::rng_box;
 use crate::agent_wrapper::*;
 use crate::{graph::NeuralNetwork, enecode::EneCode};
 
@@ -19,6 +22,7 @@ use crate::{graph::NeuralNetwork, enecode::EneCode};
 pub struct PopulationConfig {
     project_name: Arc<str>, 
     project_directory: Arc<PathBuf>,
+    api_endpoint: Option<Url>,
     rng_seed: Option<u8>,
     epoch_size: usize,
     mutation_rate_scale_per_epoch: f32,
@@ -35,6 +39,7 @@ pub enum FitnessValueError{
 impl PopulationConfig {
     pub fn new(project_name: Arc<str>,
                home_directory: Option<Arc<PathBuf>>,
+               api_endpoint: Option<Url>,
                epoch_size: usize, 
                mutation_rate_scale_per_epoch: f32, 
                mutation_effect_scale_per_epoch: f32,
@@ -49,6 +54,7 @@ impl PopulationConfig {
         PopulationConfig {
             project_name,
             project_directory,
+            api_endpoint,
             rng_seed,
             epoch_size,
             mutation_rate_scale_per_epoch,
@@ -62,6 +68,7 @@ impl PopulationConfig {
 ///- **Purpose**: Represents a population in the evolutionary algorithm.
 pub struct Population {
     pub agents: Vec<Agent>,
+    pub qdm: QDManager,
     pub size: usize,
     pub topology_mutation_rate: f32,
     pub mutation_rate: f32,
@@ -73,22 +80,19 @@ pub struct Population {
 
 impl Population {
 
-    pub fn new(agents: Vec<Agent>, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
+    pub fn new(genome_base: EneCode, population_size: usize, survival_rate: f32, mutation_rate: f32, topology_mutation_rate: f32) -> Self {
+        let mut agent_vector:Vec<Agent> = Vec::new();
 
-        // let mut agent_vector:Vec<Agent> = Vec::new();
-        // let genome_base = qdm.fetchg((0,0));
-        //
-        //
-        // for _idx in 0..population_size {
-        //     let mut agent = Agent::new(genome_base.clone());
-        //
-        //     //Random mutation of newly initialized population members
-        //     agent.mutate(1., 10., 0.);
-        //     agent_vector.push(agent);
-        // }
+        for _idx in 0..population_size {
+            let mut agent = Agent::new(genome_base.clone());
+
+            //Random mutation of newly initialized population members
+            agent.mutate(1., 10., 0.);
+            agent_vector.push(agent);
+        }
 
         Population {
-            agents,
+            agents: agent_vector,
             topology_mutation_rate,
             mutation_rate, 
             mutation_effect_sd: 5.,
