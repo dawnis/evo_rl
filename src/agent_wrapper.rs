@@ -2,12 +2,16 @@
 //! Python
 use crate::graph::NeuralNetwork;
 use crate::enecode::EneCode;
+
+
 use pyo3::prelude::*;
+
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
 use std::io::Result as FileResult;
+use std::error::Error;
 
 pub trait NnInputVector: Send {
     fn into_vec_f32(&self) -> Vec<f32>;
@@ -61,5 +65,6 @@ impl Agent {
         writer.flush()?;
         Ok(())
     }
+
 }
 
