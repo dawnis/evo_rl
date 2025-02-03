@@ -6,6 +6,7 @@ use pyo3::types::{PyDict, PyList};
 use pyo3::Py;
 use std::sync::Arc;
 use crate::enecode::EneCode;
+use crate::qdmanager::QDManager;
 use crate::population::{Population, PopulationConfig};
 use std::path::PathBuf;
 use pyo3::exceptions::PyRuntimeError;
@@ -150,7 +151,10 @@ impl PopulationApi {
             };
 
 
-            Ok(Population::new(genome, population_size, survival_rate, mutation_rate, topology_mutation_rate))
+            let module_name: String = network_module.unwrap();
+            let qdm: QDManager = QDManager::new_from_genome(Arc::from(module_name), None, genome);
+
+            Ok(Population::new(qdm, population_size, survival_rate, mutation_rate, topology_mutation_rate))
 
         })?;
 

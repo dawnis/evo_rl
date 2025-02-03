@@ -80,15 +80,17 @@ pub struct Population {
 }
 
 impl Population {
+
     pub fn new(
-        genome_base: EneCode,
+        qdm: QDManager,
         population_size: usize,
         survival_rate: f32,
         mutation_rate: f32,
         topology_mutation_rate: f32,
     ) -> Self {
-        let qdm = QDManager::new_from_genome(Arc::from("None"), None, genome_base);
-        let mut agent_vector: Vec<Agent> = qdm.gen_agent_vector(population_size);
+
+
+        let agent_vector: Vec<Agent> = qdm.gen_agent_vector(population_size);
 
         Population {
             agents: agent_vector,
@@ -335,14 +337,16 @@ mod tests {
     #[test]
     fn test_create_population() {
         let genome = GENOME_EXAMPLE.clone();
-        let population_test = Population::new(genome, 125, 0.8, 0.1, 0.);
+        let qdm: QDManager = QDManager::new_from_genome(Arc::from("test"), None, genome);
+        let population_test = Population::new(qdm, 125, 0.8, 0.1, 0.);
         assert_eq!(population_test.agents.len(), 125);
     }
 
     #[test]
     fn test_truncate_population() {
         let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
+        let qdm: QDManager = QDManager::new_from_genome(Arc::from("test"), None, genome);
+        let mut population_test = Population::new(qdm, 10, 0.8, 0.1, 0.);
 
         let agent_fitness_vector = vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
         for (agent, fitness) in population_test
@@ -363,7 +367,9 @@ mod tests {
         let seed = Some(17); // Fixed seed for determinism
 
         let genome = GENOME_EXAMPLE.clone();
-        let mut population_test = Population::new(genome, 3, 0.8, 0.1, 0.);
+        let qdm: QDManager = QDManager::new_from_genome(Arc::from("test"), None, genome);
+
+        let mut population_test = Population::new(qdm, 3, 0.8, 0.1, 0.);
         let agent_fitness_vector = vec![5., 3., 2.];
         for (agent, fitness) in population_test
             .agents
@@ -381,7 +387,8 @@ mod tests {
     #[test]
     fn test_generate_offspring() {
         let genome = GENOME_EXAMPLE.clone();
-        let population_test = Population::new(genome, 10, 0.8, 0.1, 0.);
+        let qdm: QDManager = QDManager::new_from_genome(Arc::from("test"), None, genome);
+        let population_test = Population::new(qdm, 10, 0.8, 0.1, 0.);
         let parent_id_vector = vec![0, 1, 3, 5];
 
         let offspring_vec = population_test.generate_offspring(Some(17), parent_id_vector);
@@ -394,7 +401,8 @@ mod tests {
         setup_logger();
 
         let genome = XOR_GENOME.clone();
-        let mut population = Population::new(genome, 200, 0.1, 0.4, 0.01);
+        let qdm: QDManager = QDManager::new_from_genome(Arc::from("test"), None, genome);
+        let mut population = Population::new(qdm, 200, 0.1, 0.4, 0.01);
 
         let ef = XorEvaluation::new();
 
@@ -428,7 +436,8 @@ mod tests {
         setup_logger();
 
         let genome = XOR_GENOME_MINIMAL.clone();
-        let mut population = Population::new(genome, 200, 0.2, 0.4, 0.4);
+        let qdm: QDManager = QDManager::new_from_genome(Arc::from("test"), None, genome);
+        let mut population = Population::new(qdm, 200, 0.2, 0.4, 0.4);
 
         let ef = XorEvaluation::new();
 
