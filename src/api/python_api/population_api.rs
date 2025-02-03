@@ -170,7 +170,7 @@ impl PopulationApi {
 
             let project_path: Arc<PathBuf> = Arc::from(PathBuf::from(project_directory));
 
-            Ok(PopulationConfig::new(Arc::from(project_name), Some(project_path), 200, 0.50, 0.50, true, None))
+            Ok(PopulationConfig::new(Arc::from(project_name), Some(project_path), None, 200, 0.50, 0.50, true, None))
 
         })?;
 

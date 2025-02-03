@@ -51,7 +51,7 @@ impl QDManager {
 
     }
 
-    pub async fn new(module: Arc<str>, endpoint: Option<Url>) -> Self {
+    pub fn new(module: Arc<str>, endpoint: Option<Url>) -> Self {
 
         let endpt = endpoint.clone();
 
@@ -61,7 +61,22 @@ impl QDManager {
         };
         
 
-        let seed = match fetch_genome(api, &module, (0, 0)).await {
+        Self {
+            module,
+            endpoint,
+            qdlib: HashMap::new(),
+        }
+    }
+
+    //Fetches genomes associated with module from parameter (0, 0) in the postgres database
+    pub async fn api_fetch_library(&self) {
+
+        let apiurl = match &self.endpoint {
+            Some(url) => url,
+            None => panic!("No api endpoint set but asked to fetch library")
+        };
+
+        let seed = match fetch_genome(apiurl.clone(), &self.module, (0, 0)).await {
             Ok(s) => s,
             Err(e) => panic!("Error fetching genome: {}", e)
 
@@ -69,13 +84,8 @@ impl QDManager {
 
         let mut qdlib: HashMap<(i32, i32), EneCode> = HashMap::new();
         qdlib.insert((0, 0), seed);
-
-        Self {
-            module,
-            endpoint,
-            qdlib,
-        }
     }
+
 
     pub async fn postg(&self) {
         //Posts genome into Postgres db
