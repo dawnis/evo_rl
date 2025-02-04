@@ -457,7 +457,7 @@ mod tests {
 
         while (population.generation < 1000) & (population.population_fitness < 5.8) {
             for agent in population.agents.iter_mut() {
-                ef.evaluate_agent(agent);
+                let _ = ef.evaluate_agent(agent);
             }
 
             population.update_population_fitness();
@@ -465,6 +465,6 @@ mod tests {
             population.evolve_step(&config);
         }
 
-        assert!(population.population_fitness >= 5.2);
+        assert!(population.population_fitness >= 5.2)
     }
 }

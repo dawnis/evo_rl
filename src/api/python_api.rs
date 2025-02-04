@@ -2,9 +2,31 @@
 //! Python
 use log::*;
 use pyo3::prelude::*;
+use reqwest::Url;
 
 mod population_api;
 mod agent_api;
+
+
+#[pyclass]
+#[derive(Clone)]
+struct PyUrl {
+    url: Url,
+}
+
+#[pymethods]
+impl PyUrl {
+    #[new]
+    fn new(url: String) -> PyResult<Self> {
+        Url::parse(&url)
+            .map(|url| Self { url })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Invalid URL: {}", e)))
+    }
+
+    fn to_string(&self) -> String {
+        self.url.to_string()
+    }
+}
 
 #[pyfunction]
 fn log_something() {
@@ -21,6 +43,7 @@ fn evo_rl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
     m.add_class::<population_api::PopulationApi>()?;
     m.add_class::<agent_api::AgentApi>()?;
+    m.add_class::<PyUrl>()?;
     let _ = m.add_function(wrap_pyfunction!(log_something, m)?);
     Ok(())
 }

@@ -1,8 +1,7 @@
 //!This module implements a struct which manages the quality-diversity database associated with a
 //!particular module.
 
-use reqwest::{Client, Url};
-use std::error::Error;
+use reqwest::{Client, Url, Error};
 use std::sync::Arc;
 use std::collections::HashMap;
 
@@ -18,7 +17,7 @@ pub struct QDManager {
 
 }
 
-async fn fetch_genome(full_api_endpoint: Url, module: &str, location: (i32, i32)) -> Result<EneCode, Box<dyn Error>> {
+async fn fetch_genome(full_api_endpoint: Url, module: &str, location: (i32, i32)) -> Result<EneCode, Error> {
 
         let r_client = Client::new();
     
@@ -28,11 +27,12 @@ async fn fetch_genome(full_api_endpoint: Url, module: &str, location: (i32, i32)
             .send()
             .await?;
     
-        if response.status().is_success() {
-            let genome: EneCode = response.json().await?;
+        match response.error_for_status() {
+            Ok(res) => {
+            let genome: EneCode = res.json().await?;
             Ok(genome)
-        } else {
-            Err(format!("Request failed with status: {}", response.status()).into())
+                }
+            Err(E) => panic!("Got an error on fetch {}", E)
         }
 }
 
@@ -66,6 +66,13 @@ impl QDManager {
             endpoint,
             qdlib: HashMap::new(),
         }
+    }
+
+    pub async fn init_library(&self) -> Result<(), Error> {
+        if self.qdlib.is_empty() {
+            self.api_fetch_library().await?; // Assuming this returns `Result<(), Error>`
+        }
+        Ok(())
     }
 
     //Fetches genomes associated with module from parameter (0, 0) in the postgres database

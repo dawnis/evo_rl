@@ -7,6 +7,7 @@ use pyo3::Py;
 use std::sync::Arc;
 use crate::enecode::EneCode;
 use crate::qdmanager::QDManager;
+use crate::api::python_api::PyUrl;
 use crate::population::{Population, PopulationConfig};
 use std::path::PathBuf;
 use pyo3::exceptions::PyRuntimeError;
@@ -94,7 +95,7 @@ impl PopulationApi {
     ///Population constructor which can either utilize inputs/outputs in the Configuration
     ///dictionary as a starting point (hidden units are the same as the number of inputs), or can
     ///use a `.json` file that encodes an Enecode struct. 
-    pub fn new(pyconfig: Py<PyDict>, checkpoint: Option<PathBuf>) -> PyResult<Self> {
+    pub fn new(pyconfig: Py<PyDict>, api_checkpoint: Option<PyUrl>) -> PyResult<Self> {
 
 
         let population = Python::with_gil(|py| -> PyResult<Population> {
@@ -141,18 +142,34 @@ impl PopulationApi {
                 None => None
             };
 
-
-            let genome: EneCode = match checkpoint {
-                Some(chkpt) => match EneCode::try_from(&chkpt) {
-                    Ok(enecode) => enecode,
-                    Err(err) => panic!("{}", err)
-                },
-                None => EneCode::new(input_size, hidden_size, output_size, network_module.as_deref())
+            let api: Option<PyUrl> = match config.get_item("api")? {
+                Some(x) => Some(x.extract()?),
+                None => None
             };
 
 
+            // let genome: EneCode = match api_checkpoint {
+            //     Some(chkpt) => match EneCode::try_from(&chkpt) {
+            //         Ok(enecode) => enecode,
+            //         Err(err) => panic!("{}", err)
+            //     },
+            //     None => EneCode::new(input_size, hidden_size, output_size, network_module.as_deref())
+            // };
+
+            let py_url = match api {
+                Some(pyurl) => pyurl,
+                None => panic!("Proper api endpoint PyUrl was not configured!")
+            };
+
             let module_name: String = network_module.unwrap();
-            let qdm: QDManager = QDManager::new_from_genome(Arc::from(module_name), None, genome);
+
+            let qdm: QDManager = match api_checkpoint {
+                Some(chkpt) => QDManager::new(Arc::from(module_name), Some(py_url.url)),
+                None => {
+                    let seed_genome = EneCode::new(input_size, hidden_size, output_size, None);
+                    QDManager::new_from_genome(Arc::from(module_name), Some(py_url.url), seed_genome)
+                }
+            };
 
             Ok(Population::new(qdm, population_size, survival_rate, mutation_rate, topology_mutation_rate))
 
