@@ -89,6 +89,7 @@ impl Population {
         topology_mutation_rate: f32,
     ) -> Self {
 
+        let _ = qdm.init_library();
 
         let agent_vector: Vec<Agent> = qdm.gen_agent_vector(population_size);
 
