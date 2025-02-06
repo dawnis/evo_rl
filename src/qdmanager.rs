@@ -2,7 +2,7 @@
 //!particular module.
 
 use reqwest::{Url, Error};
-use reqwest::blocking::get;
+use reqwest::blocking::Client;
 use std::sync::Arc;
 use std::collections::HashMap;
 
@@ -20,18 +20,14 @@ pub struct QDManager {
 
 fn fetch_genome(full_api_endpoint: Url, module: &str, location: (i32, i32)) -> Result<EneCode, Error> {
 
-        let response = get(full_api_endpoint)
+        let client = Client::new();
+
+        let genome: EneCode = client.get(full_api_endpoint)
             .query(&[("module", module), ("param_x", &location.0.to_string()), ("param_y", &location.1.to_string())])
-            .send()
-            .text?;
-    
-        match response.error_for_status() {
-            Ok(res) => {
-            let genome: EneCode = res.json()?;
-            Ok(genome)
-                }
-            Err(e) => panic!("Got an error on fetch {}", e)
-        }
+            .send()?
+            .json()?;
+
+        Ok(genome)
 }
 
 
@@ -80,7 +76,7 @@ impl QDManager {
             None => panic!("No api endpoint set but asked to fetch library")
         };
 
-        let seed = match fetch_genome(apiurl.clone(), &self.module, (0, 0)) {
+        let seed = match fetch_genome(apiurl.clone(), &self.module, (0, 0)){
             Ok(s) => s,
             Err(e) => panic!("Error fetching genome: {}", e)
 
