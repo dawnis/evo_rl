@@ -119,18 +119,18 @@ impl PopulationApi {
                 None => panic!("missing population topology rate parameter"),
             };
 
-            let network_module: Option<String> = match config.get_item("network_module")? {
+            let network_module: Option<String> = match config.get_item("project_name")? {
                 Some(x) => Some(x.extract()?),
                 None => None,
             };
 
-            let api: Option<PyUrl> = match config.get_item("api")? {
+            let api: Option<String> = match config.get_item("api")? {
                 Some(x) => Some(x.extract()?),
                 None => None,
             };
 
-            let py_url = match api {
-                Some(pyurl) => pyurl,
+            let py_url: PyUrl = match api {
+                Some(pyurl) => PyUrl::new(pyurl)?,
                 None => panic!("Proper api endpoint PyUrl was not configured!"),
             };
 
