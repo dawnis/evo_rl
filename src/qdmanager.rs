@@ -1,8 +1,8 @@
 //!This module implements a struct which manages the quality-diversity database associated with a
 //!particular module.
 
-use reqwest::{Client, Url};
-use std::error::Error;
+use reqwest::{Url, Error};
+use reqwest::blocking::Client;
 use std::sync::Arc;
 use std::collections::HashMap;
 
@@ -18,22 +18,16 @@ pub struct QDManager {
 
 }
 
-async fn fetch_genome(full_api_endpoint: Url, module: &str, location: (i32, i32)) -> Result<EneCode, Box<dyn Error>> {
+fn fetch_genome(full_api_endpoint: Url, module: &str, location: (i32, i32)) -> Result<EneCode, Error> {
 
-        let r_client = Client::new();
-    
-        let response = r_client
-            .get(full_api_endpoint)
+        let client = Client::new();
+
+        let genome: EneCode = client.get(full_api_endpoint)
             .query(&[("module", module), ("param_x", &location.0.to_string()), ("param_y", &location.1.to_string())])
-            .send()
-            .await?;
-    
-        if response.status().is_success() {
-            let genome: EneCode = response.json().await?;
-            Ok(genome)
-        } else {
-            Err(format!("Request failed with status: {}", response.status()).into())
-        }
+            .send()?
+            .json()?;
+
+        Ok(genome)
 }
 
 
@@ -68,15 +62,21 @@ impl QDManager {
         }
     }
 
+    pub fn init_library(&self) {
+        if self.qdlib.is_empty() {
+            self.api_fetch_library();
+            }
+    }
+
     //Fetches genomes associated with module from parameter (0, 0) in the postgres database
-    pub async fn api_fetch_library(&self) {
+    pub fn api_fetch_library(&self) {
 
         let apiurl = match &self.endpoint {
             Some(url) => url,
             None => panic!("No api endpoint set but asked to fetch library")
         };
 
-        let seed = match fetch_genome(apiurl.clone(), &self.module, (0, 0)).await {
+        let seed = match fetch_genome(apiurl.clone(), &self.module, (0, 0)){
             Ok(s) => s,
             Err(e) => panic!("Error fetching genome: {}", e)
 
