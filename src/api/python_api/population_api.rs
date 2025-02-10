@@ -250,6 +250,18 @@ impl PopulationApi {
         py_result
     }
 
+    /// Serializes the agent's genome as a `.json` file and writes it to a Postgres database. This can also be
+    /// used as the starting point for evolution.
+    pub fn agent_post(&self, idx: usize, file_path: PathBuf) -> PyResult<()> {
+        let post_success = self.population.post_agent_genome(idx);
+        let py_result = match post_success {
+            Ok(value) => Ok(value),
+            Err(err) => Err(PyRuntimeError::new_err(format!("{}", err))),
+        };
+
+        py_result
+    }
+
     /// Gets the agent's current output value.
     pub fn agent_out(&self, idx: usize) -> PyResult<Vec<f32>> {
         Ok(self.population.agents[idx].output())
