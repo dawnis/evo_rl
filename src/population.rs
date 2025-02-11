@@ -278,6 +278,13 @@ impl Population {
     pub fn write_agent_genome(&self, idx: usize, file_path: PathBuf) -> FileResult<()> {
         self.agents[idx].write_genome(file_path)
     }
+
+
+    pub fn post_agent_genome(&self, idx: usize) -> Result<(), reqwest::Error> {
+        let agent_genome: EneCode = self.agents[idx].enecode();
+        self.qdm.postg(&agent_genome)
+    }
+
 }
 
 ///## Unit Tests

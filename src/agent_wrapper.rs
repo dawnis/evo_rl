@@ -57,6 +57,11 @@ impl Agent {
         self.fitness = new_fitness;
     }
 
+    pub fn enecode(&self) -> EneCode {
+        let nn_deref = *self.nn.clone();
+        EneCode::from(&nn_deref)
+    }
+
     pub fn write_genome(&self, file_path: PathBuf) -> FileResult<()> {
         let serialized_genome = self.nn.serialize_genome();
         let file = File::create(file_path)?;
