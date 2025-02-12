@@ -163,3 +163,21 @@ impl QDManager {
     //     }
     // }
 }
+
+
+mod tests {
+    use super::*;
+    use reqwest::Error;
+
+    #[test]
+    fn test_fetch_genome_error() {
+
+        let apiresult = Url::parse("http://localhost:8080/genome");
+        let api: Url = apiresult.unwrap();
+        // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
+
+        let result = fetch_genome(api, "nonexistent_test_module", (0,0));
+
+        assert!(result.is_err());
+    }
+}
