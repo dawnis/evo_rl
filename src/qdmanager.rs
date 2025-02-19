@@ -165,15 +165,30 @@ impl QDManager {
 }
 
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use reqwest::Error;
+    use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+    use wiremock::matchers::{method, path};
 
-    #[test]
-    fn test_fetch_genome_error() {
+    #[tokio::test]
+    async fn test_fetch_genome_error() {
 
-        let apiresult = Url::parse("http://localhost:8080/genome");
-        let api: Url = apiresult.unwrap();
+        let mock_server = MockServer::start().await;
+
+        let genome = GENOME_EXAMPLE.clone();
+
+        Mock::given(method("GET"))
+            .and(path("/genome"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(genome))
+            .mount(&mock_server)
+            .await;
+
+        let uri = format!("{}/genome", mock_server.uri());
+        let api: Url = Url::parse(&uri).expect("Url Parse Error");
+
         // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
 
         let result = fetch_genome(api, "nonexistent_test_module", (0,0));

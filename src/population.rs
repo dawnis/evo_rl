@@ -290,6 +290,7 @@ impl Population {
 ///## Unit Tests
 ///
 ///Unit tests are provided to validate the functionality of `Population` methods, including creation, fitness evaluation, truncation, SUS, offspring generation, and the overall evolution process with different configurations.
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::agent_wrapper::Agent;
