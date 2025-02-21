@@ -1,6 +1,8 @@
 //!This module implements a struct which manages the quality-diversity database associated with a
 //!particular module.
 
+use log::*;
+
 use reqwest::blocking::Client;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::{Error, Url};
@@ -170,23 +172,29 @@ mod tests {
     use super::*;
     use reqwest::Error;
     use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
-    use wiremock::matchers::{method, path};
+    use httpmock::prelude::*;
+    use crate::setup_logger;
 
-    #[tokio::test]
-    async fn test_fetch_genome_error() {
+    #[test]
+    fn test_fetch_genome_error() {
 
-        let mock_server = MockServer::start().await;
+        let server = MockServer::start();
 
         let genome = GENOME_EXAMPLE.clone();
 
-        Mock::given(method("GET"))
-            .and(path("/genome"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(genome))
-            .mount(&mock_server)
-            .await;
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/genome")
+                .query_param("module", "test_module")
+                .query_param("param_x", "0")
+                .query_param("param_y", "0");
 
-        let uri = format!("{}/genome", mock_server.uri());
+            then.status(200)
+                .header("content-type", "application/json")
+                .json_body_obj(&genome);
+        });
+
+        let uri = format!("{}/data", server.base_url());
         let api: Url = Url::parse(&uri).expect("Url Parse Error");
 
         // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
@@ -194,5 +202,38 @@ mod tests {
         let result = fetch_genome(api, "nonexistent_test_module", (0,0));
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fetch_genome_success() {
+        setup_logger();
+
+        let server = MockServer::start();
+
+        let genome = GENOME_EXAMPLE.clone();
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/genome")
+                .query_param("module", "test_module")
+                .query_param("param_x", "0")
+                .query_param("param_y", "0");
+
+            then.status(200)
+                .header("content-type", "application/json")
+                .json_body_obj(&genome);
+        });
+
+        let uri = format!("{}/genome", server.base_url());
+        let api: Url = Url::parse(&uri).expect("Url Parse Error");
+
+        // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
+        
+
+        let result = fetch_genome(api, "test_module", (0,0)).expect("httpmock failure");
+
+        debug!("{:?}", result);
+
+        assert_eq!(result, genome);
     }
 }
