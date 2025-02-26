@@ -20,7 +20,7 @@ use enecode::NeuronType;
 use log::*;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::f32::consts::E;
+use std::f64::consts::E;
 
 ///Utility function for logging unit tests
 pub fn setup_logger() {
@@ -40,8 +40,8 @@ pub fn rng_box(rng_seed: Option<u8>) -> Box<dyn RngCore> {
 }
 
 /// Convenience function to easily create maps when specifying gene strings. 
-pub fn hash_em(names: Vec<&str>, weights: Vec<f32>) -> HashMap<String, f32> {
-    let mut hm: HashMap<String, f32> = HashMap::new();
+pub fn hash_em(names: Vec<&str>, weights: Vec<f64>) -> HashMap<String, f64> {
+    let mut hm: HashMap<String, f64> = HashMap::new();
     for (inn_number, weight) in names.iter().zip(weights.iter()) {
         hm.insert(String::from(*inn_number), *weight);
     }
@@ -135,12 +135,12 @@ pub fn increment_innovation_number(neuron_id: &str, daughter_ids: Vec<&str>) -> 
 }
 
 //Non-linearity functions. Thank yourAkshay Ballal for sigmoid and relu
-pub fn sigmoid(z: &f32) -> f32 {
+pub fn sigmoid(z: &f64) -> f64 {
     1.0 / (1.0 + E.powf(-z))
 }
 
 //Non-linearity functions. Thank yourAkshay Ballal for sigmoid and relu
-pub fn relu(z: &f32) -> f32 {
+pub fn relu(z: &f64) -> f64 {
     match *z > 0.0 {
         true => *z,
         false => 0.0,

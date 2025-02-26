@@ -112,13 +112,13 @@ impl From<&NeuralNetwork> for EneCode {
             let node = network.node_identity_map[id];
             let node_parents = network.graph.neighbors_directed(node, petgraph::Direction::Incoming);
 
-            let mut input_map: HashMap<String, f32> = HashMap::new();
+            let mut input_map: HashMap<String, f64> = HashMap::new();
 
             for parent in node_parents {
                 let parent_id = network.graph[parent].id.clone();
                 let edge_id = network.graph.find_edge(parent, node);
 
-                let edge_weight: f32 = match edge_id {
+                let edge_weight: f64 = match edge_id {
                     Some(w) => *network.graph.edge_weight(w).unwrap(),
                     None => panic!("Edge ID was not found"),
                 };
@@ -216,7 +216,7 @@ impl EneCode {
             let mut inputs: Vec<String> = (0..input_size).map(|x| format!("i{:02}", x)).collect();
 
 
-            let mut input_weight_map: HashMap<String, f32> = HashMap::new();
+            let mut input_weight_map: HashMap<String, f64> = HashMap::new();
 
             for input_id in inputs.drain(..) {
                 input_weight_map.insert(input_id, 0.);
@@ -239,7 +239,7 @@ impl EneCode {
         for output_idx in 0..output_size {
             let mut hidden: Vec<String> = (0..num_hidden).map(|x| format!("h{:02}", x)).collect();
 
-            let mut input_weight_map: HashMap<String, f32> = HashMap::new();
+            let mut input_weight_map: HashMap<String, f64> = HashMap::new();
 
             for input_id in hidden.drain(..) {
                 input_weight_map.insert(input_id, 0.);
@@ -515,7 +515,7 @@ mod tests {
         let neuronal_ene_code = NeuronalEneCode::new_from_enecode("N1", &GENOME_EXAMPLE);
 
         let mut input_map = HashMap::new();
-        input_map.insert(String::from("input_1"), 1.0_f32);
+        input_map.insert(String::from("input_1"), 1.0);
 
         let expected_nec: NeuronalEneCode = NeuronalEneCode {
          neuron_id: Arc::from("N1"),

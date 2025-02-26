@@ -18,9 +18,9 @@ use std::fmt;
 pub struct NeuronalPropertiesGene {
     pub innovation_number: Arc<str>,
     pub module: Arc<str>,
-    pub tau: f32,
-    pub homeostatic_force: f32,
-    pub tanh_alpha: f32,
+    pub tau: f64,
+    pub homeostatic_force: f64,
+    pub tanh_alpha: f64,
 }
 
 impl Default for NeuronalPropertiesGene {

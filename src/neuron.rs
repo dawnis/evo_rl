@@ -30,21 +30,21 @@ use crate::{relu, sigmoid};
 #[derive(Debug, Clone)]
 pub struct Nn {
     pub id: Arc<str>,
-    pub synaptic_weights: DVector<f32>,
-    pub bias: f32,
+    pub synaptic_weights: DVector<f64>,
+    pub bias: f64,
     pub inputs: Vec<String>,
-    pub activation_level: f32,
-    pub tau: f32,
-    pub learning_threshold: f32,
-    pub learning_rate: f32,
-    pub tanh_alpha: f32,
+    pub activation_level: f64,
+    pub tau: f64,
+    pub learning_threshold: f64,
+    pub learning_rate: f64,
+    pub tanh_alpha: f64,
     pub neuron_type: NeuronType,
 }
 
 impl From<Arc<NeuronalEneCode<'_>>> for Nn {
     fn from(ene: Arc<NeuronalEneCode>) -> Self {
         let mut inputs_as_list: Vec<String> = Vec::new();
-        let mut weights_as_list: Vec<f32> = Vec::new();
+        let mut weights_as_list: Vec<f64> = Vec::new();
 
         for input_id in ene.topology.inputs.keys() {
             inputs_as_list.push(input_id.clone());
@@ -71,8 +71,8 @@ impl Nn{
     /// Propagates the input through the neuron to compute the next state.
     ///
     /// # Arguments
-    /// * `input` -f32
-    pub fn propagate(&mut self, input: f32) {
+    /// * `input` -f64
+    pub fn propagate(&mut self, input: f64) {
         match self.neuron_type {
             NeuronType::In => {
                 self.set_value(input);
@@ -85,7 +85,7 @@ impl Nn{
     ///
     /// # Returns
     /// The output value as a floating-point number.
-    pub fn output_value(&self) -> f32 {
+    pub fn output_value(&self) -> f64 {
         match self.neuron_type {
             NeuronType::In => self.activation_level,
             _ => self.nonlinearity(&self.activation_level)
@@ -99,28 +99,28 @@ impl Nn{
     /// * `rng` - thread_rng
     /// * `epsilon` - mutation rate
     /// * `sd` - the standard deviation of a normal distribution used to sample changes
-    pub fn mutate<R: Rng>(&mut self, rng: &mut R, epsilon: f32, sd: f32) {
+    pub fn mutate<R: Rng>(&mut self, rng: &mut R, epsilon: f64, sd: f64) {
         //bias mutation
         let normal = Normal::new(0., sd).unwrap();
-        if rng.gen::<f32>() < epsilon {
+        if rng.gen::<f64>() < epsilon {
             let updated_bias = self.bias + normal.sample(rng);
             self.bias = updated_bias;
         }
     }
 
-    fn set_value(&mut self, in_value: f32) {
+    fn set_value(&mut self, in_value: f64) {
         self.activation_level = in_value;
         debug!("Setting neuron {} to activation level of {}", self.id, self.activation_level);
     }
 
-    fn fwd(&mut self, impulse: f32) {
+    fn fwd(&mut self, impulse: f64) {
         self.activation_level = self.activation_level - self.activation_level*(-self.tau).exp();
         self.activation_level += impulse + self.bias;
         //self.learn?
         debug!("Activation level for neuron {} set at {} after impulse {}", self.id, self.activation_level, impulse);
     }
 
-    fn nonlinearity(&self, z: &f32) -> f32 {
+    fn nonlinearity(&self, z: &f64) -> f64 {
         // Use relu on hidden layers, tanh on output
         match self.neuron_type {
          NeuronType::Hidden => relu(z),
@@ -129,7 +129,7 @@ impl Nn{
     }
 
 
-    fn learn(&self, syn_weight_current: f32) -> f32 {
+    fn learn(&self, syn_weight_current: f64) -> f64 {
         //Calculates a delta to change the current synapse
         if self.activation_level > self.learning_threshold {
             syn_weight_current * self.learning_rate // - self.activation_level * self.homeostatic_force
@@ -156,7 +156,7 @@ mod tests {
         };
 
         let mut neuron = Nn::from(Arc::new(nec));
-        neuron.propagate(12_f32);
+        neuron.propagate(12_f64);
 
         assert_eq!(neuron.activation_level, 17.);
 
@@ -172,7 +172,7 @@ mod tests {
         };
 
         let mut neuron = Nn::from(Arc::new(nec));
-        neuron.propagate(12_f32);
+        neuron.propagate(12_f64);
 
         assert_eq!(neuron.activation_level, 17.);
         assert_eq!(neuron.output_value(), relu(&17.));
@@ -180,7 +180,7 @@ mod tests {
         //multiple runs of the same neuron with 0 tau should produce the same value
         //in the absence of synaptic learning
 
-        neuron.propagate(12_f32);
+        neuron.propagate(12_f64);
         assert_eq!(neuron.activation_level, 17.);
         assert_eq!(neuron.output_value(), relu(&17.));
     }

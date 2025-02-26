@@ -12,9 +12,9 @@ use pyo3::exceptions::PyRuntimeError;
 #[pyclass]
 pub struct AgentApi {
     agent: Agent,
-    topology_mutation_rate: f32,
-    synaptic_mutation_rate: f32,
-    mutation_effect: f32
+    topology_mutation_rate: f64,
+    synaptic_mutation_rate: f64,
+    mutation_effect: f64
 }
 
 #[pymethods]
@@ -26,17 +26,17 @@ impl AgentApi {
 
                 let config: &PyDict = pyconfig.as_ref(py);
 
-                let synaptic_mutation_rate: f32  = match config.get_item("synaptic_mutation_rate")? {
+                let synaptic_mutation_rate: f64  = match config.get_item("synaptic_mutation_rate")? {
                     Some(x) => x.extract()?,
                     None => panic!("missing synaptic mutation rate parameter")
                 };
 
-                let topology_mutation_rate: f32  = match config.get_item("topology_mutation_rate")? {
+                let topology_mutation_rate: f64  = match config.get_item("topology_mutation_rate")? {
                     Some(x) => x.extract()?,
                     None => panic!("missing topology mutation parameter")
                 };
 
-                let mutation_effect: f32  = match config.get_item("mutation_effect")? {
+                let mutation_effect: f64  = match config.get_item("mutation_effect")? {
                     Some(x) => x.extract()?,
                     None => panic!("missing mutation effect parameter")
                 };
@@ -62,10 +62,10 @@ impl AgentApi {
 
     /// Evaluates an agent's otuput given an input vector.
     pub fn fwd(&mut self, input: Py<PyList>) {
-        let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+        let py_vec = Python::with_gil(|py| -> Result<Vec<f64>, PyErr> {
             let input_vec = input.as_ref(py);
             input_vec.iter()
-                .map(|p| p.extract::<f32>())
+                .map(|p| p.extract::<f64>())
                 .collect()
             });
 
@@ -77,7 +77,7 @@ impl AgentApi {
 
 
     /// Gets the agent's current output value. 
-    pub fn output(&self) -> PyResult<Vec<f32>> {
+    pub fn output(&self) -> PyResult<Vec<f64>> {
         Ok(self.agent.output())
     }
 }
