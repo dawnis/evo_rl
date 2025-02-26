@@ -3,7 +3,7 @@
 
 use log::*;
 
-use reqwest::blocking::Client;
+use reqwest::blocking::{Client, Response};
 use reqwest::header::CONTENT_TYPE;
 use reqwest::{Error, Url};
 
@@ -45,7 +45,7 @@ fn post_genome(
     module: &Arc<str>,
     location: (i32, i32),
     genome: &EneCode,
-) -> Result<(), Error> {
+) -> Result<Response, Error> {
     let client = Client::builder().timeout(Duration::from_secs(5)).build()?;
 
 
@@ -65,8 +65,7 @@ fn post_genome(
         .json(&genome)
         .send()?;
 
-    println!("Response: {}", response.text()?);
-    Ok(())
+    Ok(response)
 }
 
 impl QDManager {
@@ -111,7 +110,7 @@ impl QDManager {
         qdlib.insert((0, 0), seed);
     }
 
-    pub fn postg(&self, genome: &EneCode) -> Result<(), Error> {
+    pub fn postg(&self, genome: &EneCode) -> Result<Response, Error> {
 
         let apiurl = match &self.endpoint {
             Some(url) => url,
@@ -194,7 +193,7 @@ mod tests {
                 .json_body_obj(&genome);
         });
 
-        let uri = format!("{}/data", server.base_url());
+        let uri = format!("{}/genome", server.base_url());
         let api: Url = Url::parse(&uri).expect("Url Parse Error");
 
         // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
@@ -235,5 +234,44 @@ mod tests {
         debug!("{:?}", result);
 
         assert_eq!(result, genome);
+    }
+
+    #[test]
+    fn test_post_genome_success() {
+        setup_logger();
+
+        let server = MockServer::start();
+
+        let genome = GENOME_EXAMPLE.clone();
+
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/genome")
+                .query_param("module", "test_module")
+                .query_param("param_x", "0")
+                .query_param("param_y", "0")
+                .json_body_obj(&genome);
+                
+
+            then.status(200);
+
+        });
+
+        let uri = format!("{}/genome", server.base_url());
+        let api: Url = Url::parse(&uri).expect("Url Parse Error");
+
+        // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
+        
+
+        let response = post_genome(api,
+            &Arc::from("test_module"),
+            (0,0),
+            &genome).unwrap();
+
+        debug!("{:?}", response);
+        
+        mock.assert();
+
+        assert_eq!(response.status(), 200);
     }
 }

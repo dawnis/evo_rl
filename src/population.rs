@@ -4,6 +4,7 @@ use log::*;
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use rand::Rng;
+use reqwest::blocking::Response;
 use thiserror::Error;
 
 use reqwest::Url;
@@ -282,8 +283,21 @@ impl Population {
 
     pub fn post_agent_genome(&self, idx: usize) -> Result<(), reqwest::Error> {
         let agent_genome: EneCode = self.agents[idx].enecode();
-        self.qdm.postg(&agent_genome)
+        let response = self.qdm.postg(&agent_genome).unwrap();
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            panic!(
+                "POST request failed with status {}: {}",
+                response.status(),
+                response.text().unwrap_or_else(|_| "Unable to read response body".into())
+            ); 
+        }   
+
+
     }
+
 
 }
 
