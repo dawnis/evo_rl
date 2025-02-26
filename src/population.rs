@@ -4,6 +4,7 @@ use log::*;
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use rand::Rng;
+use reqwest::blocking::Response;
 use thiserror::Error;
 
 use reqwest::Url;
@@ -278,11 +279,32 @@ impl Population {
     pub fn write_agent_genome(&self, idx: usize, file_path: PathBuf) -> FileResult<()> {
         self.agents[idx].write_genome(file_path)
     }
+
+
+    pub fn post_agent_genome(&self, idx: usize) -> Result<(), reqwest::Error> {
+        let agent_genome: EneCode = self.agents[idx].enecode();
+        let response = self.qdm.postg(&agent_genome).unwrap();
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            panic!(
+                "POST request failed with status {}: {}",
+                response.status(),
+                response.text().unwrap_or_else(|_| "Unable to read response body".into())
+            ); 
+        }   
+
+
+    }
+
+
 }
 
 ///## Unit Tests
 ///
 ///Unit tests are provided to validate the functionality of `Population` methods, including creation, fitness evaluation, truncation, SUS, offspring generation, and the overall evolution process with different configurations.
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::agent_wrapper::Agent;

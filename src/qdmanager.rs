@@ -1,38 +1,74 @@
 //!This module implements a struct which manages the quality-diversity database associated with a
 //!particular module.
 
-use reqwest::{Url, Error};
-use reqwest::blocking::Client;
-use std::sync::Arc;
+use log::*;
+
+use reqwest::blocking::{Client, Response};
+use reqwest::header::CONTENT_TYPE;
+use reqwest::{Error, Url};
+
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
 
 use crate::agent_wrapper::Agent;
 use crate::enecode::EneCode;
 
-
-//TODO: MVP is to keep track of a single genome parameterized as X=0 and y=0
 pub struct QDManager {
-   module: Arc<str>,
-   endpoint: Option<Url>,
-   qdlib: HashMap<(i32, i32), EneCode>
-
+    module: Arc<str>,
+    endpoint: Option<Url>,
+    qdlib: HashMap<(i32, i32), EneCode>,
 }
 
-fn fetch_genome(full_api_endpoint: Url, module: &str, location: (i32, i32)) -> Result<EneCode, Error> {
+fn fetch_genome(
+    full_api_endpoint: Url,
+    module: &str,
+    location: (i32, i32),
+) -> Result<EneCode, Error> {
+    let client = Client::builder().timeout(Duration::from_secs(5)).build()?;
 
-        let client = Client::new();
+    let genome: EneCode = client
+        .get(full_api_endpoint)
+        .query(&[
+            ("module", module),
+            ("param_x", &location.0.to_string()),
+            ("param_y", &location.1.to_string()),
+        ])
+        .send()?
+        .json()?;
 
-        let genome: EneCode = client.get(full_api_endpoint)
-            .query(&[("module", module), ("param_x", &location.0.to_string()), ("param_y", &location.1.to_string())])
-            .send()?
-            .json()?;
-
-        Ok(genome)
+    Ok(genome)
 }
 
+fn post_genome(
+    full_api_endpoint: Url,
+    module: &Arc<str>,
+    location: (i32, i32),
+    genome: &EneCode,
+) -> Result<Response, Error> {
+    let client = Client::builder().timeout(Duration::from_secs(5)).build()?;
+
+
+    let modulen: &str = &module;
+    let param_x = location.0.to_string();
+    let param_y = location.1.to_string();
+
+    let mut params = HashMap::new();
+    params.insert("module", modulen);
+    params.insert("param_x", &param_x);
+    params.insert("param_y", &param_y);
+
+    let response = client
+        .post(full_api_endpoint)
+        .query(&params)
+        .header(CONTENT_TYPE, "application_json")
+        .json(&genome)
+        .send()?;
+
+    Ok(response)
+}
 
 impl QDManager {
-
     pub fn new_from_genome(module: Arc<str>, endpoint: Option<Url>, genome_base: EneCode) -> Self {
         let mut qdlib: HashMap<(i32, i32), EneCode> = HashMap::new();
         qdlib.insert((0, 0), genome_base);
@@ -42,19 +78,9 @@ impl QDManager {
             endpoint,
             qdlib,
         }
-
     }
 
     pub fn new(module: Arc<str>, endpoint: Option<Url>) -> Self {
-
-        let endpt = endpoint.clone();
-
-        let api = match endpt {
-            Some(url) => url,
-            None => panic!("Expected a valid url for qdm connection!")
-        };
-        
-
         Self {
             module,
             endpoint,
@@ -65,48 +91,49 @@ impl QDManager {
     pub fn init_library(&self) {
         if self.qdlib.is_empty() {
             self.api_fetch_library();
-            }
+        }
     }
 
     //Fetches genomes associated with module from parameter (0, 0) in the postgres database
     pub fn api_fetch_library(&self) {
-
         let apiurl = match &self.endpoint {
             Some(url) => url,
-            None => panic!("No api endpoint set but asked to fetch library")
+            None => panic!("No api endpoint set but asked to fetch library"),
         };
 
-        let seed = match fetch_genome(apiurl.clone(), &self.module, (0, 0)){
+        let seed = match fetch_genome(apiurl.clone(), &self.module, (0, 0)) {
             Ok(s) => s,
-            Err(e) => panic!("Error fetching genome: {}", e)
-
+            Err(e) => panic!("Error fetching genome: {}", e),
         };
 
         let mut qdlib: HashMap<(i32, i32), EneCode> = HashMap::new();
         qdlib.insert((0, 0), seed);
     }
 
+    pub fn postg(&self, genome: &EneCode) -> Result<Response, Error> {
 
-    pub async fn postg(&self) {
-        //Posts genome into Postgres db
+        let apiurl = match &self.endpoint {
+            Some(url) => url,
+            None => panic!("No api endpoint set but asked to post genome"),
+        };
+
+        post_genome(apiurl.clone(), &self.module, (0, 0), genome)
     }
 
     pub fn fetchg(&self, location: (i32, i32)) -> &EneCode {
         match self.qdlib.get(&location) {
             Some(g) => g,
-            None => panic!("Location not represented in library")
+            None => panic!("Location not represented in library"),
         }
     }
 
     pub fn gen_agent_vector(&self, vector_size: usize) -> Vec<Agent> {
+        let mut agent_vector: Vec<Agent> = Vec::new();
+        let genome_base = self.fetchg((0, 0));
 
-        let mut agent_vector:Vec<Agent> = Vec::new();
-        let genome_base = self.fetchg((0,0));
-        
-        
         for _idx in 0..vector_size {
             let mut agent = Agent::new(genome_base.clone());
-        
+
             //Random mutation of newly initialized population members
             agent.mutate(1., 10., 0.);
             agent_vector.push(agent);
@@ -119,7 +146,6 @@ impl QDManager {
     //     //TODO: for now assume that the module has entries in the database. If it is new,
     //     //will deal with this later
     // }
-
 
     // pub fn post_genome(&self, full_api_endpoint: &str) -> Result<String, Box<dyn Error>> {
     //     let r_client = Client::new();
@@ -137,4 +163,115 @@ impl QDManager {
     //         Err(format!("Request failed with status: {}", response.status()).into())
     //     }
     // }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reqwest::Error;
+    use crate::doctest::{GENOME_EXAMPLE, XOR_GENOME, XOR_GENOME_MINIMAL};
+    use httpmock::prelude::*;
+    use crate::setup_logger;
+
+    #[test]
+    fn test_fetch_genome_error() {
+
+        let server = MockServer::start();
+
+        let genome = GENOME_EXAMPLE.clone();
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/genome")
+                .query_param("module", "test_module")
+                .query_param("param_x", "0")
+                .query_param("param_y", "0");
+
+            then.status(200)
+                .header("content-type", "application/json")
+                .json_body_obj(&genome);
+        });
+
+        let uri = format!("{}/genome", server.base_url());
+        let api: Url = Url::parse(&uri).expect("Url Parse Error");
+
+        // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
+
+        let result = fetch_genome(api, "nonexistent_test_module", (0,0));
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fetch_genome_success() {
+        setup_logger();
+
+        let server = MockServer::start();
+
+        let genome = GENOME_EXAMPLE.clone();
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/genome")
+                .query_param("module", "test_module")
+                .query_param("param_x", "0")
+                .query_param("param_y", "0");
+
+            then.status(200)
+                .header("content-type", "application/json")
+                .json_body_obj(&genome);
+        });
+
+        let uri = format!("{}/genome", server.base_url());
+        let api: Url = Url::parse(&uri).expect("Url Parse Error");
+
+        // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
+        
+
+        let result = fetch_genome(api, "test_module", (0,0)).expect("httpmock failure");
+
+        debug!("{:?}", result);
+
+        assert_eq!(result, genome);
+    }
+
+    #[test]
+    fn test_post_genome_success() {
+        setup_logger();
+
+        let server = MockServer::start();
+
+        let genome = GENOME_EXAMPLE.clone();
+
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/genome")
+                .query_param("module", "test_module")
+                .query_param("param_x", "0")
+                .query_param("param_y", "0")
+                .json_body_obj(&genome);
+                
+
+            then.status(200);
+
+        });
+
+        let uri = format!("{}/genome", server.base_url());
+        let api: Url = Url::parse(&uri).expect("Url Parse Error");
+
+        // let qdm: QDManager = QDManager::new(Arc::from("testmodule"), Some(api));
+        
+
+        let response = post_genome(api,
+            &Arc::from("test_module"),
+            (0,0),
+            &genome).unwrap();
+
+        debug!("{:?}", response);
+        
+        mock.assert();
+
+        assert_eq!(response.status(), 200);
+    }
 }
