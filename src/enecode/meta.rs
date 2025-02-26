@@ -15,8 +15,8 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq)]
 pub struct MetaLearningGene {
     pub innovation_number: Arc<str>,
-    pub learning_rate: f32,
-    pub learning_threshold: f32
+    pub learning_rate: f64,
+    pub learning_threshold: f64
 }
 
 impl Default for MetaLearningGene {

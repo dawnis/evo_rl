@@ -23,14 +23,14 @@ use std::fmt;
 pub struct TopologyGene {
     pub innovation_number: Arc<str>,
     pub pin: NeuronType, //stolen from python-neat for outside connections
-    pub inputs: HashMap<String, f32>, //map that defines genetic weight of synapse for each parent
-    pub genetic_bias: f32,
+    pub inputs: HashMap<String, f64>, //map that defines genetic weight of synapse for each parent
+    pub genetic_bias: f64,
     pub active: bool,
 }
 
 impl Default for TopologyGene {
     fn default() -> Self {
-        let inputs: HashMap<String, f32> = HashMap::new();
+        let inputs: HashMap<String, f64> = HashMap::new();
         Self {
             innovation_number: Arc::from("n01"),
             pin: NeuronType::Hidden,

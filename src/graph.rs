@@ -42,8 +42,8 @@ use pyo3::types::{PyDict, IntoPyDict};
 /// # let genome = GENOME_EXAMPLE.clone();
 /// let mut network = NeuralNetwork::new(genome);
 ///
-/// // Assume input is a properly initialized Vec<f32>
-/// # let input: Vec<f32> = vec![0.];
+/// // Assume input is a properly initialized Vec<f64>
+/// # let input: Vec<f64> = vec![0.];
 /// network.fwd(input);
 ///
 /// let output = network.fetch_network_output();
@@ -51,9 +51,9 @@ use pyo3::types::{PyDict, IntoPyDict};
 #[derive(Debug, Clone)]
 pub struct NeuralNetwork {
     pub genome: EneCode,
-    pub graph: DiGraph<Nn, f32>,
+    pub graph: DiGraph<Nn, f64>,
     pub node_identity_map: HashMap<String, NodeIndex>,
-    network_output: Vec<f32>,
+    network_output: Vec<f64>,
 }
 
 impl ToPyObject for NeuralNetwork {
@@ -139,7 +139,7 @@ impl NeuralNetwork {
     }
     
     /// Run mutation for this network
-    pub fn mutate(&mut self, mutation_rate: f32, mutation_sd: f32, topology_mutation_rate: f32) {
+    pub fn mutate(&mut self, mutation_rate: f64, mutation_sd: f64, topology_mutation_rate: f64) {
         let mut rng = rand::thread_rng();
         self.mutate_synapses(&mut rng, mutation_rate, mutation_sd);
         self.mutate_nn(&mut rng, mutation_rate, mutation_sd);
@@ -159,7 +159,7 @@ impl NeuralNetwork {
     }
 
     /// Mutates properties in the Nn struct
-    fn mutate_nn<R: Rng>(&mut self, rng: &mut R, mutation_rate: f32, sd: f32) {
+    fn mutate_nn<R: Rng>(&mut self, rng: &mut R, mutation_rate: f64, sd: f64) {
         for nn in self.node_identity_map.keys() {
             let node = self.node_identity_map[nn];
             self.graph[node].mutate(rng, mutation_rate, sd);
@@ -167,12 +167,12 @@ impl NeuralNetwork {
     }
 
     /// Mutates connections in the network given the current mutation rate
-    fn mutate_synapses<R: Rng>(&mut self, rng: &mut R, epsilon: f32, sd: f32) {
+    fn mutate_synapses<R: Rng>(&mut self, rng: &mut R, epsilon: f64, sd: f64) {
         //synaptic mutation
         let normal = Normal::new(0., sd).unwrap();
         for edge_index in self.graph.edge_indices() {
-            if rng.gen::<f32>() < epsilon {
-                let new_weight: f32 = self.graph[edge_index] + normal.sample(rng);
+            if rng.gen::<f64>() < epsilon {
+                let new_weight: f64 = self.graph[edge_index] + normal.sample(rng);
                 self.graph[edge_index] = new_weight;
             }
 
@@ -180,13 +180,13 @@ impl NeuralNetwork {
     }
 
     /// Mutates the topology of the network by either adding a new neuron or connection
-    fn mutate_topology<R: Rng>(&mut self, rng: &mut R, epsilon: f32) {
+    fn mutate_topology<R: Rng>(&mut self, rng: &mut R, epsilon: f64) {
 
         let input_units = self.fetch_neuron_list_by_type(NeuronType::In);
 
         for inp in input_units {
 
-            if rng.gen::<f32>() < epsilon.powf(2.0) {
+            if rng.gen::<f64>() < epsilon.powf(2.0) {
                 if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
                     let downstream_node = self.node_identity_map[neuron_id];
                     self.add_new_edge(inp, downstream_node);
@@ -194,7 +194,7 @@ impl NeuralNetwork {
                 continue;
             }
 
-            if rng.gen::<f32>() < epsilon.powf(2.0) {
+            if rng.gen::<f64>() < epsilon.powf(2.0) {
                 if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
                     let downstream_node = self.node_identity_map[neuron_id];
                     self.remove_edge(inp, downstream_node);
@@ -207,13 +207,13 @@ impl NeuralNetwork {
         let num_units = hidden_units.len();
 
         for nn in hidden_units {
-            if rng.gen::<f32>() < epsilon.powf(2.0) {
+            if rng.gen::<f64>() < epsilon.powf(2.0) {
                 self.duplicate_neuron(nn);
                 break;
             }
 
             //Don't remove progenitors!
-            if rng.gen::<f32>() < epsilon.powf(2.0) {
+            if rng.gen::<f64>() < epsilon.powf(2.0) {
                 let progenitor_code = progenitor_code(&*self.graph[nn].id);
 
                 if &*self.graph[nn].id != progenitor_code {
@@ -223,7 +223,7 @@ impl NeuralNetwork {
                 break;
             }
 
-            if rng.gen::<f32>() < epsilon.powf(2.0) {
+            if rng.gen::<f64>() < epsilon.powf(2.0) {
                 if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
                     let downstream_node = self.node_identity_map[neuron_id];
                     self.add_new_edge(nn, downstream_node);
@@ -231,7 +231,7 @@ impl NeuralNetwork {
                 continue;
             }
 
-            if rng.gen::<f32>() < epsilon.powf(2.0) {
+            if rng.gen::<f64>() < epsilon.powf(2.0) {
                 if let Some(neuron_id) = self.node_identity_map.keys().choose(rng) {
                     let downstream_node = self.node_identity_map[neuron_id];
                     self.remove_edge(nn, downstream_node);
@@ -357,7 +357,7 @@ impl NeuralNetwork {
     fn propagate_node(&mut self, node: NodeIndex) {
         let node_parents = self.graph.neighbors_directed(node, petgraph::Direction::Incoming);
 
-        let mut dot_product: f32 = 0.;
+        let mut dot_product: f64 = 0.;
         let mut n_parents = 0;
 
         for pnode in node_parents {
@@ -367,7 +367,7 @@ impl NeuralNetwork {
             //grab current synaptic weights
             let edge = self.graph.find_edge(pnode, node);
 
-            let synaptic_value: f32 = match edge {
+            let synaptic_value: f64 = match edge {
                 Some(syn) => *self.graph.edge_weight(syn).expect("Connection was not initialized!"),
                 None => panic!("Improper Edge")
             };
@@ -380,7 +380,7 @@ impl NeuralNetwork {
 
     /// Forward propagate through the neural network.
     /// This function takes a vector of input values and populates the network output.
-    pub fn fwd(&mut self, input: Vec<f32>) {
+    pub fn fwd(&mut self, input: Vec<f64>) {
         // For all input neurons, set values to input
         let input_nodes = self.fetch_neuron_list_by_type(NeuronType::In);
         assert_eq!(input.len(), input_nodes.len());
@@ -400,7 +400,7 @@ impl NeuralNetwork {
         }
 
         // Create a vector to store the result
-        let mut network_output: Vec<f32> = Vec::new();
+        let mut network_output: Vec<f64> = Vec::new();
 
         let output_neurons = self.fetch_neuron_list_by_type(NeuronType::Out);
 
@@ -413,17 +413,17 @@ impl NeuralNetwork {
     }
 
     /// Fetch the output of the network as a vector of floating-point numbers.
-    pub fn fetch_network_output(&self) -> Vec<f32> {
+    pub fn fetch_network_output(&self) -> Vec<f64> {
         self.network_output.clone()
     }
 
     /// Write the graph as a .dot file for visualization/inspection
     pub fn write_dot(&self, file_path: &Path) {
-        let node_label = |g: &DiGraph<Nn, f32>, node_ref: (NodeIndex, &Nn)| {
+        let node_label = |g: &DiGraph<Nn, f64>, node_ref: (NodeIndex, &Nn)| {
             format!("label=\"{}\"", node_ref.1.id)
         };
 
-        let edge_attr = |g: &DiGraph<Nn, f32>, edge_ref: EdgeReference<'_, f32>| -> String {
+        let edge_attr = |g: &DiGraph<Nn, f64>, edge_ref: EdgeReference<'_, f64>| -> String {
         format!("label=\"{}\"", edge_ref.weight())
         };
 
@@ -493,9 +493,9 @@ mod tests {
 
         let gt = GENOME_EXAMPLE.clone();
         let n1gene = gt.topology_gene(&String::from("N1"));
-        let weight_before_mut: f32 = n1gene.inputs["input_1"];
+        let weight_before_mut: f64 = n1gene.inputs["input_1"];
 
-        let epsilon: f32 = 1.;
+        let epsilon: f64 = 1.;
 
         let seed = [0; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
@@ -504,7 +504,7 @@ mod tests {
 
         let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
 
-        let synaptic_value: f32 = match in1_n1_edge {
+        let synaptic_value: f64 = match in1_n1_edge {
             Some(syn) => *network_example.graph.edge_weight(syn).expect("Edge not found!!"),
             None => panic!("No weight at edge index")
         };
@@ -518,7 +518,7 @@ mod tests {
         let genome = GENOME_EXAMPLE.clone();
         let mut network_example = NeuralNetwork::new(genome);
 
-        let epsilon: f32 = 1.;
+        let epsilon: f64 = 1.;
 
         let seed = [0; 32]; // Fixed seed for determinism
         let mut rng = StdRng::from_seed(seed);
@@ -546,21 +546,21 @@ mod tests {
 
         let gt = GENOME_EXAMPLE.clone();
         let n1gene = gt.topology_gene(&String::from("N1"));
-        let weight_before_mut: f32 = n1gene.inputs["input_1"];
-        let bias_before_mut: f32 = n1gene.genetic_bias;
+        let weight_before_mut: f64 = n1gene.inputs["input_1"];
+        let bias_before_mut: f64 = n1gene.genetic_bias;
 
-        let epsilon: f32 = 1.;
+        let epsilon: f64 = 1.;
 
         network_example.mutate(epsilon, 0.1, 0.);
 
         let in1_n1_edge = network_example.graph.find_edge(network_example.node_identity_map["input_1"], network_example.node_identity_map["N1"]);
 
-        let synaptic_value: f32 = match in1_n1_edge {
+        let synaptic_value: f64 = match in1_n1_edge {
             Some(syn) => *network_example.graph.edge_weight(syn).expect("Edge not found!!"),
             None => panic!("No weight at edge index")
         };
 
-        let bias_value: f32 = network_example.graph[network_example.node_identity_map["N1"]].bias;
+        let bias_value: f64 = network_example.graph[network_example.node_identity_map["N1"]].bias;
 
         assert_ne!(synaptic_value, weight_before_mut);
         assert_ne!(bias_value, bias_before_mut);

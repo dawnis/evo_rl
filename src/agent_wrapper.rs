@@ -14,11 +14,11 @@ use std::io::Result as FileResult;
 use std::error::Error;
 
 pub trait NnInputVector: Send {
-    fn into_vec_f32(&self) -> Vec<f32>;
+    fn into_vec_f64(&self) -> Vec<f64>;
 }
 
-impl NnInputVector for Vec<f32> {
-    fn into_vec_f32(&self) -> Vec<f32> { 
+impl NnInputVector for Vec<f64> {
+    fn into_vec_f64(&self) -> Vec<f64> { 
         self.clone()
     }
 }
@@ -26,7 +26,7 @@ impl NnInputVector for Vec<f32> {
 #[pyclass]
 pub struct Agent {
     pub nn: Box<NeuralNetwork>,
-    pub fitness: f32,
+    pub fitness: f64,
 }
 
 #[pymethods]
@@ -41,19 +41,19 @@ impl Agent {
         }
     }
 
-    pub fn fwd(&mut self, input: Vec<f32>) {
+    pub fn fwd(&mut self, input: Vec<f64>) {
         self.nn.fwd(input);
     }
 
-    pub fn output(&self) -> Vec<f32> {
+    pub fn output(&self) -> Vec<f64> {
         self.nn.fetch_network_output()
     }
 
-    pub fn mutate(&mut self, mutation_rate: f32, mutation_sd: f32, topology_mutation_rate: f32) {
+    pub fn mutate(&mut self, mutation_rate: f64, mutation_sd: f64, topology_mutation_rate: f64) {
         self.nn.mutate(mutation_rate, mutation_sd, topology_mutation_rate);
     }
 
-    pub fn update_fitness(&mut self, new_fitness: f32) {
+    pub fn update_fitness(&mut self, new_fitness: f64) {
         self.fitness = new_fitness;
     }
 

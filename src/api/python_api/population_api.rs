@@ -104,17 +104,17 @@ impl PopulationApi {
                 None => panic!("missing population size parameter"),
             };
 
-            let survival_rate: f32 = match config.get_item("survival_rate")? {
+            let survival_rate: f64 = match config.get_item("survival_rate")? {
                 Some(x) => x.extract()?,
                 None => panic!("missing population survival rate parameter"),
             };
 
-            let mutation_rate: f32 = match config.get_item("mutation_rate")? {
+            let mutation_rate: f64 = match config.get_item("mutation_rate")? {
                 Some(x) => x.extract()?,
                 None => panic!("missing population mutation rate parameter"),
             };
 
-            let topology_mutation_rate: f32 = match config.get_item("topology_mutation_rate")? {
+            let topology_mutation_rate: f64 = match config.get_item("topology_mutation_rate")? {
                 Some(x) => x.extract()?,
                 None => panic!("missing population topology rate parameter"),
             };
@@ -227,9 +227,9 @@ impl PopulationApi {
 
     /// Evaluates an agent's otuput given an input vector.
     pub fn agent_fwd(&mut self, idx: usize, input: Py<PyList>) {
-        let py_vec = Python::with_gil(|py| -> Result<Vec<f32>, PyErr> {
+        let py_vec = Python::with_gil(|py| -> Result<Vec<f64>, PyErr> {
             let input_vec = input.as_ref(py);
-            input_vec.iter().map(|p| p.extract::<f32>()).collect()
+            input_vec.iter().map(|p| p.extract::<f64>()).collect()
         });
 
         match py_vec {
@@ -263,7 +263,7 @@ impl PopulationApi {
     }
 
     /// Gets the agent's current output value.
-    pub fn agent_out(&self, idx: usize) -> PyResult<Vec<f32>> {
+    pub fn agent_out(&self, idx: usize) -> PyResult<Vec<f64>> {
         Ok(self.population.agents[idx].output())
     }
 
@@ -273,7 +273,7 @@ impl PopulationApi {
     }
 
     /// Sets the agent's fitness. This is necessary due to Rust's restrictions on safety.
-    pub fn set_agent_fitness(&mut self, idx: usize, value: f32) {
+    pub fn set_agent_fitness(&mut self, idx: usize, value: f64) {
         self.population.agents[idx].fitness = value;
     }
 
@@ -283,7 +283,7 @@ impl PopulationApi {
     }
 
     #[getter(fitness)]
-    fn fitness(&self) -> PyResult<f32> {
+    fn fitness(&self) -> PyResult<f64> {
         Ok(self.population.population_fitness)
     }
 

@@ -26,8 +26,8 @@ pub struct PopulationConfig {
     api_endpoint: Option<Url>,
     rng_seed: Option<u8>,
     epoch_size: usize,
-    mutation_rate_scale_per_epoch: f32,
-    mutation_effect_scale_per_epoch: f32,
+    mutation_rate_scale_per_epoch: f64,
+    mutation_effect_scale_per_epoch: f64,
     visualize_best_agent: bool,
 }
 
@@ -43,8 +43,8 @@ impl PopulationConfig {
         home_directory: Option<Arc<PathBuf>>,
         api_endpoint: Option<Url>,
         epoch_size: usize,
-        mutation_rate_scale_per_epoch: f32,
-        mutation_effect_scale_per_epoch: f32,
+        mutation_rate_scale_per_epoch: f64,
+        mutation_effect_scale_per_epoch: f64,
         visualize_best_agent: bool,
         rng_seed: Option<u8>,
     ) -> Self {
@@ -72,12 +72,12 @@ pub struct Population {
     pub agents: Vec<Agent>,
     pub qdm: QDManager,
     pub size: usize,
-    pub topology_mutation_rate: f32,
-    pub mutation_rate: f32,
-    pub mutation_effect_sd: f32,
+    pub topology_mutation_rate: f64,
+    pub mutation_rate: f64,
+    pub mutation_effect_sd: f64,
     pub generation: usize,
-    pub population_fitness: f32,
-    survival_rate: f32,
+    pub population_fitness: f64,
+    survival_rate: f64,
 }
 
 impl Population {
@@ -85,9 +85,9 @@ impl Population {
     pub fn new(
         qdm: QDManager,
         population_size: usize,
-        survival_rate: f32,
-        mutation_rate: f32,
-        topology_mutation_rate: f32,
+        survival_rate: f64,
+        mutation_rate: f64,
+        topology_mutation_rate: f64,
     ) -> Self {
 
         let _ = qdm.init_library();
@@ -124,10 +124,10 @@ impl Population {
         sample: Vec<usize>,
         n_select: usize,
     ) -> Vec<usize> {
-        let sample_fitness: Vec<f32> = sample.iter().map(|&idx| self.agents[idx].fitness).collect();
-        let total_population_fitness: f32 = sample_fitness.iter().sum();
-        let point_spacing = total_population_fitness / (n_select as f32);
-        let u = Uniform::from(0_f32..point_spacing);
+        let sample_fitness: Vec<f64> = sample.iter().map(|&idx| self.agents[idx].fitness).collect();
+        let total_population_fitness: f64 = sample_fitness.iter().sum();
+        let point_spacing = total_population_fitness / (n_select as f64);
+        let u = Uniform::from(0_f64..point_spacing);
 
         let mut selection: Vec<usize> = Vec::new();
 
@@ -138,7 +138,7 @@ impl Population {
 
         for _p in 0..n_select {
             let mut idx: usize = 0;
-            while sample_fitness[0..idx].iter().sum::<f32>() < roulette_pointer {
+            while sample_fitness[0..idx].iter().sum::<f64>() < roulette_pointer {
                 idx += 1;
 
                 if idx == sample_fitness.len() {
@@ -156,8 +156,8 @@ impl Population {
     ///- **Purpose**: Truncates the population based on survival rate.
     ///- **Returns**: A vector of indices representing the surviving population.
     fn truncate_population(&self) -> Vec<usize> {
-        let n_survival = (self.agents.len() as f32) * self.survival_rate;
-        let agent_fitness: Vec<f32> = self.agents.iter().map(|a| a.fitness).collect();
+        let n_survival = (self.agents.len() as f64) * self.survival_rate;
+        let agent_fitness: Vec<f64> = self.agents.iter().map(|a| a.fitness).collect();
         let mut fitness_pairing: Vec<_> = (0..self.agents.len()).zip(agent_fitness).collect();
         fitness_pairing.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         let sorted_data: Vec<usize> = fitness_pairing.into_iter().map(|(a, _)| a).collect();
@@ -173,7 +173,7 @@ impl Population {
         // Given selected parents, mate in pairs until the population size is fulfilled
         let num_parents = parental_ids.len();
 
-        let mate_attempt_limit = self.size as f32 * 1.5;
+        let mate_attempt_limit = self.size as f64 * 1.5;
 
         let mut n_mate_attempts = 0;
 
@@ -237,17 +237,17 @@ impl Population {
     }
 
     pub fn update_population_fitness(&mut self) {
-        let agent_fitness_vector: Vec<f32> = self.agents.iter().map(|a| a.fitness).collect();
-        self.population_fitness = agent_fitness_vector.iter().sum::<f32>() / self.size as f32;
+        let agent_fitness_vector: Vec<f64> = self.agents.iter().map(|a| a.fitness).collect();
+        self.population_fitness = agent_fitness_vector.iter().sum::<f64>() / self.size as f64;
     }
 
     pub fn report(&self, pop_config: &PopulationConfig) {
-        let agent_fitness_vector: Vec<f32> = self.agents.iter().map(|a| a.fitness).collect();
+        let agent_fitness_vector: Vec<f64> = self.agents.iter().map(|a| a.fitness).collect();
         let (best_agent_idx, population_max) = agent_fitness_vector
             .clone()
             .into_iter()
             .enumerate()
-            .fold((0, std::f32::MIN), |(idx_max, val_max), (idx, val)| {
+            .fold((0, std::f64::MIN), |(idx_max, val_max), (idx, val)| {
                 if val > val_max {
                     (idx, val)
                 } else {
@@ -315,7 +315,7 @@ mod tests {
     use crate::setup_logger;
 
     struct XorEvaluation {
-        pub fitness_begin: f32,
+        pub fitness_begin: f64,
     }
 
     impl XorEvaluation {
@@ -326,16 +326,16 @@ mod tests {
         pub fn evaluate_agent(&self, agent: &mut Agent) -> Result<(), FitnessValueError> {
             let mut fitness_evaluation = self.fitness_begin;
             //complexity penalty
-            let complexity = agent.nn.node_identity_map.len() as f32;
+            let complexity = agent.nn.node_identity_map.len() as f64;
             let complexity_penalty = 0.01 * complexity;
 
             for bit1 in 0..2 {
                 for bit2 in 0..2 {
-                    agent.fwd(vec![bit1 as f32, bit2 as f32]);
+                    agent.fwd(vec![bit1 as f64, bit2 as f64]);
                     let network_output = agent.nn.fetch_network_output();
 
                     let xor_true = (bit1 > 0) ^ (bit2 > 0);
-                    let xor_true_float: f32 = if xor_true { 1. } else { 0. };
+                    let xor_true_float: f64 = if xor_true { 1. } else { 0. };
 
                     fitness_evaluation -= (xor_true_float - network_output[0]).powf(2.);
                 }
