@@ -282,8 +282,8 @@ mod tests {
             when.method(POST)
                 .path("/genome")
                 .query_param("module", "test_module")
-                .query_param("param_x", "0")
-                .query_param("param_y", "0")
+                .query_param("x", "0")
+                .query_param("y", "0")
                 .json_body_obj(&genome);
                 
 
