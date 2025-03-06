@@ -254,6 +254,7 @@ impl PopulationApi {
     /// used as the starting point for evolution.
     pub fn agent_post(&self, idx: usize) -> PyResult<()> {
         let post_success = self.population.post_agent_genome(idx);
+
         let py_result = match post_success {
             Ok(value) => Ok(value),
             Err(err) => Err(PyRuntimeError::new_err(format!("{}", err))),
