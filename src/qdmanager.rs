@@ -7,6 +7,8 @@ use reqwest::blocking::{Client, Response};
 use reqwest::header::CONTENT_TYPE;
 use reqwest::{Error, Url};
 
+use serde_json::to_string;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -54,18 +56,48 @@ fn post_genome(
     let param_y = location.1.to_string();
 
     let mut params = HashMap::new();
-    params.insert("module", modulen);
-    params.insert("param_x", &param_x);
-    params.insert("param_y", &param_y);
 
-    let response = client
+    params.insert("module", modulen);
+    params.insert("x", &param_x);
+    params.insert("y", &param_y);
+
+    // Serialize the genome into a JSON string for logging purposes
+    match to_string(&genome) {
+        Ok(genome_json) => {
+            // Log the serialized genome as debug information
+            info!("Request Body: {:#?}", genome_json);
+        }
+        Err(e) => {
+            error!("Failed to serialize genome: {}", e);
+        }
+    }
+
+
+    let result = client
         .post(full_api_endpoint)
         .query(&params)
-        .header(CONTENT_TYPE, "application_json")
+        .header(CONTENT_TYPE, "application/json")
         .json(&genome)
-        .send()?;
+        .send();
 
-    Ok(response)
+    
+
+    //TODO: Log or print the request body on both the Rust and Scala sides to verify that the serialized JSON is correctly formatted and sent.
+
+    match result {
+        Ok(response) => {
+            info!("Ok response {}", response.status());
+            Ok(response)
+            }
+        Err(e) => {
+            if e.is_timeout() {
+                error!("Timeout error!")
+            } else {
+                error!("Response error {}", e);
+            }
+            Err(e)
+        }
+    }
 }
 
 impl QDManager {
@@ -116,6 +148,8 @@ impl QDManager {
             Some(url) => url,
             None => panic!("No api endpoint set but asked to post genome"),
         };
+
+        info!("attempting to post genome!!");
 
         post_genome(apiurl.clone(), &self.module, (0, 0), genome)
     }
